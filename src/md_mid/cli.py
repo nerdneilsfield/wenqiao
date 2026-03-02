@@ -11,17 +11,32 @@ from md_mid import __version__
 from md_mid.comment import process_comments
 from md_mid.diagnostic import DiagCollector
 from md_mid.latex import LaTeXRenderer
+from md_mid.markdown import MarkdownRenderer
 from md_mid.parser import parse
 
 
 @click.command()
 @click.argument("input", type=click.Path(exists=True, path_type=Path))
-@click.option("-t", "--target", type=click.Choice(["latex", "markdown", "html"]), default="latex")
+@click.option(
+    "-t", "--target",
+    type=click.Choice(["latex", "markdown", "html"]),
+    default="latex",
+)
 @click.option("-o", "--output", type=click.Path(path_type=Path), default=None)
 @click.option("--mode", type=click.Choice(["full", "body", "fragment"]), default="full")
 @click.option("--strict", is_flag=True, default=False)
 @click.option("--verbose", is_flag=True, default=False)
 @click.option("--dump-east", is_flag=True, default=False)
+@click.option(
+    "--bib", "bib_path",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+)
+@click.option(
+    "--heading-id-style",
+    type=click.Choice(["attr", "html"]),
+    default="attr",
+)
 @click.version_option(version=__version__)
 def main(
     input: Path,
@@ -31,6 +46,8 @@ def main(
     strict: bool,
     verbose: bool,
     dump_east: bool,
+    bib_path: Path | None,
+    heading_id_style: str,
 ) -> None:
     """md-mid: 学术写作中间格式转换工具"""
     text = input.read_text(encoding="utf-8")
@@ -57,12 +74,29 @@ def main(
     if target == "latex":
         renderer = LaTeXRenderer(mode=mode, diag=diag)
         result = renderer.render(east)
+        suffix = ".tex"
+    elif target == "markdown":
+        # 解析 .bib 文件（Parse .bib file if provided）
+        bib: dict[str, str] = {}
+        if bib_path is not None:
+            from md_mid.bibtex import parse_bib
+
+            bib = parse_bib(bib_path.read_text(encoding="utf-8"))
+        renderer_md = MarkdownRenderer(
+            bib=bib,
+            heading_id_style=heading_id_style,
+            diag=diag,
+        )
+        result = renderer_md.render(east)
+        suffix = ".rendered.md"
     else:
-        click.echo(f"Target '{target}' not yet implemented.", err=True)
+        click.echo(
+            f"Target '{target}' not yet implemented.", err=True
+        )
         raise SystemExit(1)
 
     if output is None:
-        output = input.with_suffix(".tex" if target == "latex" else f".{target}")
+        output = input.with_suffix(suffix)
 
     output.write_text(result, encoding="utf-8")
     click.echo(f"Written to {output}")

@@ -86,3 +86,70 @@ def test_strict_mode_no_error_exits_zero(tmp_path) -> None:
     out = tmp_path / "out.tex"
     result = CliRunner().invoke(main, [str(src), "--strict", "-o", str(out)])
     assert result.exit_code == 0
+
+
+# ── Task 8: -t markdown CLI ──────────────────────────────────────────────────
+
+
+def test_markdown_target_basic(tmp_path) -> None:
+    """基本 Markdown 转换（Basic markdown conversion works）."""
+    src = tmp_path / "test.mid.md"
+    src.write_text("# Hello\n\nWorld.\n")
+    out = tmp_path / "test.rendered.md"
+    result = CliRunner().invoke(main, [str(src), "-t", "markdown", "-o", str(out)])
+    assert result.exit_code == 0
+    content = out.read_text()
+    assert "# Hello" in content
+    assert "World." in content
+
+
+def test_markdown_target_citation_footnote(tmp_path) -> None:
+    """引用转换为脚注（Citation converted to Markdown footnote）."""
+    src = tmp_path / "test.mid.md"
+    src.write_text("[Wang](cite:wang2024) says hello.\n")
+    out = tmp_path / "test.rendered.md"
+    result = CliRunner().invoke(main, [str(src), "-t", "markdown", "-o", str(out)])
+    assert result.exit_code == 0
+    content = out.read_text()
+    assert "[^wang2024]" in content
+
+
+def test_markdown_target_cross_ref(tmp_path) -> None:
+    """交叉引用转换为 HTML 锚点（Cross-ref converted to HTML anchor）."""
+    src = tmp_path / "test.mid.md"
+    src.write_text("See [Figure 1](ref:fig:a) for details.\n")
+    out = tmp_path / "test.rendered.md"
+    result = CliRunner().invoke(main, [str(src), "-t", "markdown", "-o", str(out)])
+    assert result.exit_code == 0
+    content = out.read_text()
+    assert '<a href="#fig:a">Figure 1</a>' in content
+
+
+def test_markdown_default_output_suffix(tmp_path) -> None:
+    """Markdown 默认输出 .rendered.md（Default output suffix）."""
+    src = tmp_path / "test.mid.md"
+    src.write_text("Hello.\n")
+    result = CliRunner().invoke(main, [str(src), "-t", "markdown"])
+    assert result.exit_code == 0
+    # with_suffix replaces last suffix only (仅替换最后一个后缀)
+    assert (tmp_path / "test.mid.rendered.md").exists()
+
+
+def test_markdown_with_bib_file(tmp_path) -> None:
+    """--bib 选项从 .bib 文件生成脚注（--bib uses .bib for footnotes）."""
+    src = tmp_path / "test.mid.md"
+    src.write_text("[Wang](cite:wang2024) says hello.\n")
+    bib = tmp_path / "refs.bib"
+    bib.write_text(
+        '@article{wang2024, author={Wang, Alice},'
+        ' title={Registration}, year={2024}}\n'
+    )
+    out = tmp_path / "out.rendered.md"
+    result = CliRunner().invoke(
+        main,
+        [str(src), "-t", "markdown", "--bib", str(bib), "-o", str(out)],
+    )
+    assert result.exit_code == 0
+    content = out.read_text()
+    assert "Wang" in content
+    assert "Registration" in content
