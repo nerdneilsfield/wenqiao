@@ -179,10 +179,10 @@ class MarkdownRenderer:
         label = str(h.metadata.get("label", ""))
         if label:
             if self._heading_id_style == "html":
-                # Escape id attribute value (转义 id 属性值)
+                # Escape id attribute and heading text content (转义 id 属性和标题文本内容)
                 return (
                     f'<h{h.level} id="{_esc(label)}">'
-                    f"{text}</h{h.level}>\n\n"
+                    f"{_esc(text)}</h{h.level}>\n\n"
                 )
             else:
                 # attr style: ## Heading {#id}
