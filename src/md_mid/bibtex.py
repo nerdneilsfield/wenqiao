@@ -13,7 +13,7 @@ import re
 
 # 匹配条目起始 @type{key, (Match entry start @type{key,)
 _ENTRY_START_RE = re.compile(
-    r"@(\w+)\{([^\s,]+)\s*,",
+    r"@(\w+)\{([^\s,{}]+)\s*,",
     re.IGNORECASE,
 )
 
@@ -37,6 +37,9 @@ def _find_entry_body(text: str, start: int) -> str | None:
 
     从引用键逗号之后的 ``{`` 开始，向前扫描并保持大括号深度计数器，
     返回到匹配的闭合 ``}`` 之前的所有内容。
+
+    Note: does not handle unbalanced braces inside quotes or comments.
+    (注意：不处理引号或注释中的不平衡大括号。)
 
     Args:
         text: Full bib text (完整 bib 文本)
