@@ -6,11 +6,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from markdown_it import MarkdownIt
 from markdown_it.tree import SyntaxTreeNode
 from mdit_py_plugins.dollarmath import dollarmath_plugin
 from mdit_py_plugins.footnote import footnote_plugin
 
+from md_mid.diagnostic import DiagCollector
 from md_mid.nodes import (
     Blockquote,
     Citation,
@@ -18,6 +21,7 @@ from md_mid.nodes import (
     CodeInline,
     CrossRef,
     Document,
+    Emphasis,
     FootnoteDef,
     FootnoteRef,
     HardBreak,
@@ -33,7 +37,6 @@ from md_mid.nodes import (
     RawBlock,
     SoftBreak,
     Strong,
-    Emphasis,
     Table,
     Text,
     ThematicBreak,
@@ -49,13 +52,61 @@ def _create_md() -> MarkdownIt:
 
 _md = _create_md()
 
+# 合法的引用命令集（Valid citation commands per PRD）
+VALID_CITE_CMDS = frozenset(
+    {
+        "cite",
+        "citep",
+        "citet",
+        "citeauthor",
+        "citeyear",
+        "textcite",
+        "parencite",
+        "autocite",
+    }
+)
 
-def parse(text: str) -> Document:
-    """解析 Markdown 文本，返回 EAST Document 节点。"""
+
+def parse(text: str, *, diag: DiagCollector | None = None) -> Document:
+    """解析 Markdown 文本，返回 EAST Document 节点。
+
+    Parse Markdown text and return an EAST Document node.
+
+    Args:
+        text: Markdown source text (Markdown 源文本)
+        diag: Optional diagnostic collector for validation warnings (可选诊断收集器)
+
+    Returns:
+        EAST Document node (EAST 文档节点)
+    """
     tokens = _md.parse(text)
     tree = SyntaxTreeNode(tokens)
     children = _build_children(tree)
-    return Document(children=children)
+    doc = Document(children=children)
+    if diag is not None:
+        _validate_citations(doc, diag)
+    return doc
+
+
+def _validate_citations(node: Node, diag: DiagCollector) -> None:
+    """验证引用节点的合法性（Validate citation node validity）.
+
+    递归遍历树（Recursively traverses the tree）.
+    """
+    if isinstance(node, Citation):
+        # 检查空键（Check for empty citation keys）
+        if any(not k for k in node.keys):
+            diag.warning(
+                "Empty citation key in citation",
+            )
+        # 检查未知命令（Check for unknown citation command）
+        if node.cmd not in VALID_CITE_CMDS:
+            valid = ", ".join(sorted(VALID_CITE_CMDS))
+            diag.warning(
+                f"Unknown citation command '{node.cmd}', valid: {valid}",
+            )
+    for child in node.children:
+        _validate_citations(child, diag)
 
 
 def _build_children(node: SyntaxTreeNode) -> list[Node]:
@@ -90,7 +141,7 @@ def _build_node(node: SyntaxTreeNode) -> Node | list[Node] | None:
     return None
 
 
-def _position_from_map(node: SyntaxTreeNode) -> dict | None:
+def _position_from_map(node: SyntaxTreeNode) -> dict[str, object] | None:
     m = node.map
     if m is None:
         return None
@@ -98,6 +149,7 @@ def _position_from_map(node: SyntaxTreeNode) -> dict | None:
 
 
 # -- 块级构建器 --------------------------------------------------------------
+
 
 def _build_heading(node: SyntaxTreeNode) -> Heading:
     level = int(node.tag[1:])  # h1 → 1, h2 → 2, ...
@@ -131,7 +183,9 @@ def _build_list_item(node: SyntaxTreeNode) -> ListItem:
 def _build_code_block(node: SyntaxTreeNode) -> CodeBlock:
     content = node.content or ""
     language = (node.info or "").strip()
-    return CodeBlock(content=content.rstrip("\n"), language=language, position=_position_from_map(node))
+    return CodeBlock(
+        content=content.rstrip("\n"), language=language, position=_position_from_map(node)
+    )
 
 
 def _build_math_block(node: SyntaxTreeNode) -> MathBlock:
@@ -155,7 +209,8 @@ def _build_table(node: SyntaxTreeNode) -> Table:
                 for cell in tr.children:
                     text = _extract_text_from_tree(cell)
                     headers.append(text)
-                    style = cell.attrGet("style") or ""
+                    # attrGet 可能返回非字符串，统一转换（attrGet may return non-str, cast）
+                    style: str = str(cell.attrGet("style") or "")
                     if "left" in style:
                         alignments.append("left")
                     elif "right" in style:
@@ -171,7 +226,9 @@ def _build_table(node: SyntaxTreeNode) -> Table:
                     row.append(_extract_text_from_tree(cell))
                 rows.append(row)
 
-    return Table(headers=headers, alignments=alignments, rows=rows, position=_position_from_map(node))
+    return Table(
+        headers=headers, alignments=alignments, rows=rows, position=_position_from_map(node)
+    )
 
 
 def _build_hr(node: SyntaxTreeNode) -> ThematicBreak:
@@ -179,6 +236,7 @@ def _build_hr(node: SyntaxTreeNode) -> ThematicBreak:
 
 
 # -- 行内构建器 --------------------------------------------------------------
+
 
 def _build_text(node: SyntaxTreeNode) -> Text:
     return Text(content=node.content or "")
@@ -211,7 +269,8 @@ def _build_strong(node: SyntaxTreeNode) -> Strong:
 
 
 def _build_link(node: SyntaxTreeNode) -> Node:
-    url = node.attrGet("href") or ""
+    # attrGet 可能返回非字符串类型，统一转换为 str（attrGet may return non-str, cast to str）
+    url: str = str(node.attrGet("href") or "")
     children = _build_children(node)
     display_text = _extract_text_from_nodes(children)
 
@@ -220,21 +279,23 @@ def _build_link(node: SyntaxTreeNode) -> Node:
         cmd = "cite"
         if "?cmd=" in raw:
             raw, cmd = raw.split("?cmd=", 1)
-        keys = [k.strip() for k in raw.split(",")]
+        # 过滤空键（Filter empty keys from comma-separated list）
+        keys = [k.strip() for k in raw.split(",") if k.strip()]
         return Citation(keys=keys, display_text=display_text, cmd=cmd)
 
     if url.startswith("ref:"):
         label = url[4:]
         return CrossRef(label=label, display_text=display_text)
 
-    title = node.attrGet("title") or ""
+    title: str = str(node.attrGet("title") or "")
     return Link(url=url, title=title, children=children)
 
 
 def _build_image(node: SyntaxTreeNode) -> Image:
-    src = node.attrGet("src") or ""
-    alt = node.attrGet("alt") or node.content or ""
-    title = node.attrGet("title") or ""
+    # attrGet 可能返回非字符串类型，统一转换为 str（attrGet may return non-str, cast to str）
+    src: str = str(node.attrGet("src") or "")
+    alt: str = str(node.attrGet("alt") or node.content or "")
+    title: str = str(node.attrGet("title") or "")
     return Image(src=src, alt=alt, title=title)
 
 
@@ -260,6 +321,7 @@ def _build_footnote_block(node: SyntaxTreeNode) -> list[Node]:
 
 # -- 辅助函数 ----------------------------------------------------------------
 
+
 def _extract_text_from_tree(node: SyntaxTreeNode) -> str:
     """从 SyntaxTreeNode 中提取纯文本。"""
     if node.content:
@@ -283,7 +345,10 @@ def _extract_text_from_nodes(nodes: list[Node]) -> str:
 
 # -- 映射表 ------------------------------------------------------------------
 
-_NODE_MAP: dict[str, object] = {
+# 节点构建器函数类型别名（Node builder function type alias）
+_BuilderFn = Callable[[SyntaxTreeNode], Node | list[Node] | None]
+
+_NODE_MAP: dict[str, _BuilderFn] = {
     # 块级
     "heading": _build_heading,
     "paragraph": _build_paragraph,

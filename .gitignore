@@ -33,3 +33,7 @@ go.work.sum
 
 __pycache__/
 .swarm/
+.coverage
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/

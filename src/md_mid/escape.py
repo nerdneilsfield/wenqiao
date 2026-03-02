@@ -24,9 +24,9 @@ LATEX_ESCAPE_MAP = {
 
 # 匹配 LaTeX 命令及其参数：\cmd, \cmd[opt]{arg}, \cmd{arg1}{arg2}
 _CMD_RE = re.compile(
-    r"\\[a-zA-Z@]+"          # \commandname
-    r"(?:\s*\[[^\]]*\])*"    # 可选 [options] (可多个)
-    r"(?:\s*\{[^{}]*\})*"    # 可选 {args} (可多个)
+    r"\\[a-zA-Z@]+"  # \commandname
+    r"(?:\s*\[[^\]]*\])*"  # 可选 [options] (可多个)
+    r"(?:\s*\{[^{}]*\})*"  # 可选 {args} (可多个)
 )
 
 
@@ -42,7 +42,7 @@ def escape_latex_with_protection(text: str) -> str:
     """保护 LaTeX 命令后转义剩余文本（启发式模式）。"""
     protected: list[str] = []
 
-    def _protect(match: re.Match) -> str:
+    def _protect(match: re.Match[str]) -> str:
         protected.append(match.group(0))
         return f"\x00CMD{len(protected) - 1}\x00"
 

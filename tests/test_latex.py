@@ -1,10 +1,29 @@
-from md_mid.nodes import (
-    Document, Heading, Paragraph, Text, Strong, Emphasis,
-    CodeInline, CodeBlock, MathInline, MathBlock, Link, Image,
-    SoftBreak, HardBreak, RawBlock, List, ListItem, Blockquote,
-    ThematicBreak, Environment, Citation, CrossRef, Figure, Table,
-)
 from md_mid.latex import LaTeXRenderer
+from md_mid.nodes import (
+    Blockquote,
+    Citation,
+    CodeBlock,
+    CodeInline,
+    CrossRef,
+    Document,
+    Emphasis,
+    Environment,
+    Figure,
+    HardBreak,
+    Heading,
+    Link,
+    List,
+    ListItem,
+    MathBlock,
+    MathInline,
+    Paragraph,
+    RawBlock,
+    SoftBreak,
+    Strong,
+    Table,
+    Text,
+    ThematicBreak,
+)
 
 
 def render(node, **kwargs):
@@ -86,18 +105,24 @@ class TestBlock:
         assert "x = 1" in result
 
     def test_unordered_list(self):
-        lst = List(ordered=False, children=[
-            ListItem(children=[Paragraph(children=[Text(content="a")])]),
-            ListItem(children=[Paragraph(children=[Text(content="b")])]),
-        ])
+        lst = List(
+            ordered=False,
+            children=[
+                ListItem(children=[Paragraph(children=[Text(content="a")])]),
+                ListItem(children=[Paragraph(children=[Text(content="b")])]),
+            ],
+        )
         result = render(lst)
         assert "\\begin{itemize}" in result
         assert "\\item" in result
 
     def test_ordered_list(self):
-        lst = List(ordered=True, children=[
-            ListItem(children=[Paragraph(children=[Text(content="a")])]),
-        ])
+        lst = List(
+            ordered=True,
+            children=[
+                ListItem(children=[Paragraph(children=[Text(content="a")])]),
+            ],
+        )
         assert "\\begin{enumerate}" in result if (result := render(lst)) else False
 
     def test_blockquote(self):
@@ -111,9 +136,9 @@ class TestBlock:
         assert result.strip() == r"\newcommand{\myop}{\operatorname}"
 
     def test_environment(self):
-        env = Environment(name="theorem", children=[
-            Paragraph(children=[Text(content="proof here")])
-        ])
+        env = Environment(
+            name="theorem", children=[Paragraph(children=[Text(content="proof here")])]
+        )
         result = render(env)
         assert "\\begin{theorem}" in result
         assert "\\end{theorem}" in result
@@ -155,21 +180,25 @@ class TestCiteRef:
 
 class TestFullDocument:
     def _make_doc(self):
-        doc = Document(children=[
-            Heading(level=1, children=[Text(content="Intro")]),
-            Paragraph(children=[Text(content="Content.")]),
-        ])
-        doc.metadata.update({
-            "documentclass": "article",
-            "classoptions": ["12pt", "a4paper"],
-            "packages": ["amsmath", "graphicx"],
-            "title": "My Paper",
-            "author": "Author",
-            "date": "2026",
-            "abstract": "This is abstract.",
-            "bibliography": "refs.bib",
-            "bibstyle": "IEEEtran",
-        })
+        doc = Document(
+            children=[
+                Heading(level=1, children=[Text(content="Intro")]),
+                Paragraph(children=[Text(content="Content.")]),
+            ]
+        )
+        doc.metadata.update(
+            {
+                "documentclass": "article",
+                "classoptions": ["12pt", "a4paper"],
+                "packages": ["amsmath", "graphicx"],
+                "title": "My Paper",
+                "author": "Author",
+                "date": "2026",
+                "abstract": "This is abstract.",
+                "bibliography": "refs.bib",
+                "bibstyle": "IEEEtran",
+            }
+        )
         return doc
 
     def test_full_mode_has_preamble(self):
@@ -214,10 +243,12 @@ class TestFullDocument:
 
 class TestBodyMode:
     def test_body_no_preamble(self):
-        doc = Document(children=[
-            Heading(level=1, children=[Text(content="Intro")]),
-            Paragraph(children=[Text(content="Content.")]),
-        ])
+        doc = Document(
+            children=[
+                Heading(level=1, children=[Text(content="Intro")]),
+                Paragraph(children=[Text(content="Content.")]),
+            ]
+        )
         doc.metadata["title"] = "Should not appear"
         result = render(doc, mode="body")
         assert "\\documentclass" not in result
@@ -235,21 +266,27 @@ class TestBodyMode:
 
 class TestFragmentMode:
     def test_fragment_no_structure(self):
-        doc = Document(children=[
-            Heading(level=1, children=[Text(content="Title")]),
-            Paragraph(children=[Text(content="Content.")]),
-        ])
+        doc = Document(
+            children=[
+                Heading(level=1, children=[Text(content="Title")]),
+                Paragraph(children=[Text(content="Content.")]),
+            ]
+        )
         result = render(doc, mode="fragment")
         assert "\\section" not in result
         assert "Content." in result
 
     def test_fragment_preserves_inline(self):
-        doc = Document(children=[
-            Paragraph(children=[
-                Text(content="This is "),
-                Strong(children=[Text(content="bold")]),
-            ]),
-        ])
+        doc = Document(
+            children=[
+                Paragraph(
+                    children=[
+                        Text(content="This is "),
+                        Strong(children=[Text(content="bold")]),
+                    ]
+                ),
+            ]
+        )
         result = render(doc, mode="fragment")
         assert "\\textbf{bold}" in result
 
@@ -304,3 +341,33 @@ class TestTable:
         assert "\\hline" in result
         assert "\\end{tabular}" in result
         assert "\\end{table}" in result
+
+
+# ── Task 3: Diagnostic warnings in renderer ───────────────────────────────────
+
+
+class TestDiagnostics:
+    def test_unhandled_node_type_triggers_warning(self) -> None:
+        """未处理节点类型触发 warning（Unhandled node type triggers warning）."""
+        from md_mid.diagnostic import DiagCollector
+        from md_mid.nodes import Node
+
+        # 创建一个无法识别的节点类型（Create a node with unrecognized type）
+        class UnknownNode(Node):
+            @property
+            def type(self) -> str:
+                return "unknown_custom_type"
+
+        dc = DiagCollector("test")
+        renderer = LaTeXRenderer(diag=dc)
+        renderer.render(UnknownNode())
+        assert any("Unhandled node type" in d.message for d in dc.warnings)
+
+    def test_known_node_type_no_warning(self) -> None:
+        """已知节点类型不触发 warning（Known node type does not trigger warning）."""
+        from md_mid.diagnostic import DiagCollector
+
+        dc = DiagCollector("test")
+        renderer = LaTeXRenderer(diag=dc)
+        renderer.render(Paragraph(children=[Text(content="hello")]))
+        assert not any("Unhandled" in d.message for d in dc.warnings)

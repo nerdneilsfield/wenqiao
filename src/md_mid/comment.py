@@ -10,13 +10,16 @@ from __future__ import annotations
 
 import datetime
 import re
+from typing import cast
 
 from ruamel.yaml import YAML
 
-from md_mid.diagnostic import DiagCollector
+from md_mid.diagnostic import DiagCollector, Position
 from md_mid.nodes import (
     Document,
     Environment,
+    Image,
+    MathBlock,
     Node,
     Paragraph,
     RawBlock,
@@ -24,25 +27,60 @@ from md_mid.nodes import (
 
 _yaml = YAML(typ="safe")
 
-# <!-- key: value --> 模式
+# <!-- key: value --> 模式 (Pattern for HTML comment directives)
 _COMMENT_RE = re.compile(r"^<!--\s*(.*?)\s*-->$", re.DOTALL)
 
-# begin/end 指令
-_BEGIN_RE = re.compile(r"^begin:\s*(.+)$")
-_END_RE = re.compile(r"^end:\s*(.+)$")
+# 文档级指令（Document-level directives）
+DOCUMENT_DIRECTIVES = frozenset(
+    {
+        "documentclass",
+        "classoptions",
+        "packages",
+        "package-options",
+        "bibliography",
+        "bibstyle",
+        "title",
+        "author",
+        "date",
+        "abstract",
+        "preamble",
+        "latex-mode",
+        "bibliography-mode",
+    }
+)
 
-# 文档级指令
-DOCUMENT_DIRECTIVES = frozenset({
-    "documentclass", "classoptions", "packages", "package-options",
-    "bibliography", "bibstyle", "title", "author", "date", "abstract",
-    "preamble", "latex-mode", "bibliography-mode",
-})
+# 向上附着指令（Attach-up directives attached to previous sibling）
+ATTACH_UP_DIRECTIVES = frozenset(
+    {
+        "label",
+        "caption",
+        "width",
+        "placement",
+        "centering",
+        "options",
+        "args",
+        "ai-generated",
+        "ai-model",
+        "ai-prompt",
+        "ai-negative-prompt",
+        "ai-params",
+    }
+)
 
-# 向上附着指令
-ATTACH_UP_DIRECTIVES = frozenset({
-    "label", "caption", "width", "placement", "centering", "options", "args",
-    "ai-generated", "ai-model", "ai-prompt", "ai-negative-prompt", "ai-params",
-})
+# 环境级指令（Environment-level directives collected into Environment.metadata）
+ENV_DIRECTIVES = frozenset(
+    {
+        "options",
+        "args",
+        "centering",
+        "placement",
+        "label",
+        "caption",
+    }
+)
+
+# 所有已知指令键（All known directive keys, for unknown key detection）
+_ALL_KNOWN_DIRECTIVES = DOCUMENT_DIRECTIVES | ATTACH_UP_DIRECTIVES | frozenset({"begin", "end"})
 
 
 def process_comments(
@@ -51,7 +89,10 @@ def process_comments(
     *,
     diag: DiagCollector | None = None,
 ) -> Document:
-    """处理 EAST 中的 HTML 注释节点，返回增强后的 EAST。"""
+    """处理 EAST 中的 HTML 注释节点，返回增强后的 EAST。
+
+    Process HTML comment nodes in EAST, return enhanced EAST.
+    """
     if diag is None:
         diag = DiagCollector(filename)
 
@@ -65,7 +106,8 @@ def process_comments(
 def _parse_comment(node: Node) -> tuple[str, object] | None:
     """尝试从 RawBlock 中解析出 <!-- key: value --> 结构。
 
-    返回 (key, parsed_value) 或 None。
+    Try to parse <!-- key: value --> structure from a RawBlock.
+    返回 (key, parsed_value) 或 None（Returns (key, parsed_value) or None）.
     """
     if not isinstance(node, RawBlock):
         return None
@@ -76,24 +118,25 @@ def _parse_comment(node: Node) -> tuple[str, object] | None:
     if not body:
         return None
 
-    # 尝试解析为 YAML key: value
+    # 尝试解析为 YAML key: value（Try to parse as YAML key: value）
     colon_pos = body.find(":")
     if colon_pos < 0:
         return None
 
     key = body[:colon_pos].strip()
-    value_str = body[colon_pos + 1:].strip()
+    value_str = body[colon_pos + 1 :].strip()
 
     if not key:
         return None
 
-    # 用 ruamel.yaml 解析值
+    # 用 ruamel.yaml 解析值（Parse value with ruamel.yaml）
     try:
         value = _yaml.load(value_str)
     except Exception:
         value = value_str
 
-    # 日期/数值归一化：date: 2024 → "2024", date: 2024-01-15 → "2024-01-15"
+    # 日期/数值归一化（Date/number normalization）：
+    # date: 2024 → "2024", date: 2024-01-15 → "2024-01-15"
     if isinstance(value, (datetime.date, datetime.datetime)):
         value = str(value)
     elif isinstance(value, (int, float)) and key in ("date",):
@@ -107,58 +150,79 @@ def _normalize_key(key: str) -> str:
     return key.replace("-", "_")
 
 
-def _is_semantic_block(node: Node) -> bool:
-    """判断节点是否为语义内容块（非注释）。"""
-    if isinstance(node, RawBlock):
-        return _parse_comment(node) is None
-    return True
-
-
 def _collect_document_directives(doc: Document, diag: DiagCollector) -> None:
     """Phase 1: 收集头部区域的文档级指令。
 
+    Phase 1: Collect document-level directives from the header region.
     头部区域定义为：第一个语义块（非注释节点）之前的区域。
+    Header region: before the first non-comment node.
+    重复指令触发 warning，正文中的文档指令触发 warning。
+    Duplicate directives trigger warning; post-content doc directives trigger warning.
     """
     to_remove: list[int] = []
     header_ended = False
+    seen_keys: set[str] = set()  # 追踪已见过的文档指令键（Track seen document directive keys）
 
     for i, child in enumerate(doc.children):
-        if header_ended:
-            break
-
         parsed = _parse_comment(child)
+
         if parsed is None:
-            # 遇到非注释节点，头部区域结束
-            header_ended = True
+            if not header_ended:
+                # 遇到非注释节点，头部区域结束（Non-comment node ends header region）
+                header_ended = True
             continue
 
         key, value = parsed
 
-        # 检查是否为 begin/end 指令
-        if _BEGIN_RE.match(f"{key}: {value}" if isinstance(value, str) else key):
-            header_ended = True
-            continue
+        # 检查是否为 begin/end 指令（Check for begin/end directives）
         if key in ("begin", "end"):
-            header_ended = True
+            if not header_ended:
+                header_ended = True
             continue
 
-        if key in DOCUMENT_DIRECTIVES:
-            nkey = _normalize_key(key)
-            doc.metadata[nkey] = value
-            to_remove.append(i)
+        if key not in DOCUMENT_DIRECTIVES:
+            continue
 
-    # 逆序删除已消费的注释节点
+        if header_ended:
+            # 正文中出现文档级指令（Document directive found after content, ignored）
+            diag.warning(
+                f"Document directive '<!-- {key}: ... -->' found after content, ignored",
+                _pos_from_node(child),
+            )
+            continue
+
+        # 重复指令（Duplicate directive）
+        if key in seen_keys:
+            diag.warning(
+                f"Duplicate document directive '<!-- {key}: ... -->', using first occurrence",
+                _pos_from_node(child),
+            )
+            to_remove.append(i)
+            continue
+
+        seen_keys.add(key)
+        nkey = _normalize_key(key)
+        doc.metadata[nkey] = value
+        to_remove.append(i)
+
+    # 逆序删除已消费的注释节点（Remove consumed comment nodes in reverse order）
     for i in reversed(to_remove):
         doc.children.pop(i)
 
 
 def _process_environments(doc: Document, diag: DiagCollector) -> None:
-    """Phase 2: 处理 begin/end 对，将中间节点包裹为 Environment 或 RawBlock。"""
+    """Phase 2: 处理 begin/end 对，将中间节点包裹为 Environment 或 RawBlock。
+
+    Phase 2: Process begin/end pairs, wrapping inner nodes as Environment or RawBlock.
+    """
     _process_environments_in(doc.children, diag)
 
 
 def _process_environments_in(children: list[Node], diag: DiagCollector) -> None:
-    """在一个子节点列表中查找并处理 begin/end 对。"""
+    """在一个子节点列表中查找并处理 begin/end 对。
+
+    Find and process begin/end pairs in a children list.
+    """
     i = 0
     while i < len(children):
         child = children[i]
@@ -169,7 +233,6 @@ def _process_environments_in(children: list[Node], diag: DiagCollector) -> None:
                 env_name = str(value).strip()
                 end_idx = _find_matching_end(children, i + 1, env_name)
                 if end_idx is None:
-                    pos = child.position
                     diag.error(
                         f"Unmatched <!-- begin: {env_name} -->",
                         _pos_from_node(child),
@@ -177,48 +240,95 @@ def _process_environments_in(children: list[Node], diag: DiagCollector) -> None:
                     i += 1
                     continue
 
-                # 提取 begin 和 end 之间的节点
-                inner = children[i + 1:end_idx]
+                # 提取 begin 和 end 之间的节点（Extract nodes between begin and end）
+                inner = children[i + 1 : end_idx]
 
-                # 替换为 Environment 或 RawBlock
+                # 替换为 Environment 或 RawBlock（Replace with Environment or RawBlock）
                 if env_name == "raw":
-                    # raw 环境：合并内容为纯文本
+                    # raw 环境：合并内容为纯文本（raw environment: merge content as plain text）
                     content = _extract_raw_content(inner)
-                    new_node = RawBlock(content=content, position=child.position)
+                    new_node: Node = RawBlock(content=content, position=child.position)
                 else:
-                    new_node = Environment(
+                    env_node = Environment(
                         name=env_name,
                         children=inner,
                         position=child.position,
                     )
+                    # 收集环境级指令（Collect environment-level directives into metadata）
+                    _collect_env_directives(env_node, diag)
+                    new_node = env_node
 
-                # 替换 children[i:end_idx+1] 为 new_node
-                children[i:end_idx + 1] = [new_node]
-                # 不递增 i，因为可能有嵌套
+                # 替换 children[i:end_idx+1] 为 new_node（Replace slice with new_node）
+                children[i : end_idx + 1] = [new_node]
+                # 不递增 i，因为可能有嵌套（Don't increment i, may have nesting）
                 continue
 
-        # 递归处理子节点
+            elif key == "end":
+                # 孤立的 end 指令（Orphan end directive without matching begin）
+                env_name = str(value).strip()
+                diag.error(
+                    f"Orphan <!-- end: {env_name} --> without matching begin",
+                    _pos_from_node(child),
+                )
+                i += 1
+                continue
+
+        # 递归处理子节点（Recursively process child nodes）
         if hasattr(child, "children") and child.children:
             _process_environments_in(child.children, diag)
 
         i += 1
 
 
-def _find_matching_end(
-    children: list[Node], start: int, env_name: str
-) -> int | None:
-    """查找匹配的 <!-- end: env_name -->。"""
+def _collect_env_directives(env: Environment, diag: DiagCollector) -> None:
+    """收集环境节点开头的环境级指令，移入 environment.metadata。
+
+    Collect leading environment-level directives from env.children into env.metadata.
+    遇到非指令节点时停止（Stops at first non-directive node）.
+    """
+    to_remove: list[int] = []
+    for i, child in enumerate(env.children):
+        parsed = _parse_comment(child)
+        if parsed is None:
+            # 遇到非指令节点，停止收集（Non-directive node stops collection）
+            break
+
+        key, value = parsed
+        if key not in ENV_DIRECTIVES:
+            # 非环境级指令，停止收集（Non-env-level directive stops collection）
+            break
+
+        nkey = _normalize_key(key)
+        env.metadata[nkey] = value
+        to_remove.append(i)
+
+    for i in reversed(to_remove):
+        env.children.pop(i)
+
+
+def _find_matching_end(children: list[Node], start: int, env_name: str) -> int | None:
+    """查找匹配的 <!-- end: env_name -->，支持嵌套同名环境。
+
+    Find matching end directive with nesting support (嵌套感知的结束指令查找).
+    使用深度计数器正确处理同名嵌套（Uses depth counter for same-name nesting）.
+    """
+    depth = 1  # 当前嵌套深度（Current nesting depth）
     for j in range(start, len(children)):
         parsed = _parse_comment(children[j])
-        if parsed is not None:
-            key, value = parsed
-            if key == "end" and str(value).strip() == env_name:
+        if parsed is None:
+            continue
+        key, value = parsed
+        if key == "begin" and str(value).strip() == env_name:
+            depth += 1
+        elif key == "end" and str(value).strip() == env_name:
+            depth -= 1
+            if depth == 0:
                 return j
     return None
 
 
 def _extract_raw_content(nodes: list[Node]) -> str:
-    """从节点列表中提取原始文本内容。"""
+    """从节点列表中提取原始文本内容（Extract raw text content from node list）."""
     parts: list[str] = []
     for node in nodes:
         if isinstance(node, RawBlock):
@@ -233,7 +343,7 @@ def _extract_raw_content(nodes: list[Node]) -> str:
 
 
 def _text_from_paragraph(para: Paragraph) -> str:
-    """从段落中提取文本内容。"""
+    """从段落中提取文本内容（Extract text content from paragraph）."""
     parts: list[str] = []
     for child in para.children:
         if hasattr(child, "content"):
@@ -248,20 +358,23 @@ def _text_from_paragraph(para: Paragraph) -> str:
 def _process_attachments(doc: Document, diag: DiagCollector) -> None:
     """Phase 3: 向上附着指令。
 
+    Phase 3: Attach-up directives.
     遍历文档子节点列表，如果当前节点是注释且 key 属于 ATTACH_UP_DIRECTIVES，
     将其值附着到前一个兄弟节点的 metadata 中。
+    If current node is a comment with key in ATTACH_UP_DIRECTIVES,
+    attach its value to the previous sibling's metadata.
     """
     _process_attachments_in(doc.children, diag)
 
 
 def _process_attachments_in(children: list[Node], diag: DiagCollector) -> None:
-    """在子节点列表中处理向上附着。"""
+    """在子节点列表中处理向上附着（Process attach-up directives in children list）."""
     to_remove: list[int] = []
 
     for i, child in enumerate(children):
         parsed = _parse_comment(child)
         if parsed is None:
-            # 递归处理
+            # 递归处理（Recursively process child nodes）
             if hasattr(child, "children") and child.children:
                 _process_attachments_in(child.children, diag)
             continue
@@ -270,19 +383,26 @@ def _process_attachments_in(children: list[Node], diag: DiagCollector) -> None:
         nkey = _normalize_key(key)
 
         if key not in ATTACH_UP_DIRECTIVES:
+            # 检查未知指令键（Check for unknown directive keys）
+            if key not in _ALL_KNOWN_DIRECTIVES:
+                diag.info(
+                    f"Unknown directive key '<!-- {key}: ... -->'",
+                    _pos_from_node(child),
+                )
             continue
 
-        # 找到前一个非注释兄弟
+        # 找到前一个非注释兄弟（Find previous non-comment sibling）
         prev = _find_prev_sibling(children, i, to_remove)
         if prev is None:
             continue
 
-        # ai-* 指令归入 ai 子字典
+        # ai-* 指令归入 ai 子字典（ai-* directives go into ai sub-dict）
         if key.startswith("ai-"):
             ai_key = _normalize_key(key[3:])  # ai-model → model
             if "ai" not in prev.metadata:
                 prev.metadata["ai"] = {}
-            prev.metadata["ai"][ai_key] = value
+            ai_dict = cast(dict[str, object], prev.metadata["ai"])
+            ai_dict[ai_key] = value
         else:
             prev.metadata[nkey] = value
 
@@ -297,26 +417,34 @@ def _find_prev_sibling(
 ) -> Node | None:
     """找到 current_idx 之前第一个非注释、非已删除的兄弟节点。
 
-    如果前一个兄弟是 Paragraph 且只包含一个子节点（如 Image），
-    返回该子节点以便附着。
+    Find the first non-comment, non-removed sibling before current_idx.
+    只穿透包含单个 Image 或 MathBlock 子节点的 Paragraph。
+    Only penetrates Paragraph containing a single Image or MathBlock child.
     """
     for j in range(current_idx - 1, -1, -1):
         if j in skip_indices:
             continue
         node = children[j]
         if not isinstance(node, RawBlock) or _parse_comment(node) is None:
-            # 穿透单子节点段落
+            # 只穿透含单个 Image/MathBlock 的段落（Only penetrate para with Image/MathBlock）
             if isinstance(node, Paragraph) and len(node.children) == 1:
-                return node.children[0]
+                child = node.children[0]
+                if isinstance(child, (Image, MathBlock)):
+                    return child
             return node
     return None
 
 
-def _pos_from_node(node: Node):
-    """从节点提取 Position 对象（用于诊断）。"""
-    from md_mid.diagnostic import Position
+def _pos_from_node(node: Node) -> Position | None:
+    """从节点提取 Position 对象（用于诊断）。
 
+    Extract Position object from node (for diagnostics).
+    """
     if node.position and isinstance(node.position, dict):
         start = node.position.get("start", {})
-        return Position(line=start.get("line", 0), column=start.get("column", 1))
+        if isinstance(start, dict):
+            return Position(
+                line=int(start.get("line", 0)),
+                column=int(start.get("column", 1)),
+            )
     return None

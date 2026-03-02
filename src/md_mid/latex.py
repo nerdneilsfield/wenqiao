@@ -8,9 +8,31 @@
 
 from __future__ import annotations
 
-from md_mid.escape import escape_latex, escape_latex_with_protection
-from md_mid.nodes import Node
+from collections.abc import Callable
+from typing import cast
 
+from md_mid.diagnostic import DiagCollector
+from md_mid.escape import escape_latex, escape_latex_with_protection
+from md_mid.nodes import (
+    Citation,
+    CodeBlock,
+    CodeInline,
+    CrossRef,
+    Environment,
+    Figure,
+    FootnoteDef,
+    FootnoteRef,
+    Heading,
+    Image,
+    Link,
+    List,
+    MathBlock,
+    MathInline,
+    Node,
+    RawBlock,
+    Table,
+    Text,
+)
 
 _HEADING_CMDS = {
     1: "section",
@@ -23,14 +45,33 @@ _HEADING_CMDS = {
 
 
 class LaTeXRenderer:
-    def __init__(self, mode: str = "full", ref_tilde: bool = True) -> None:
+    def __init__(
+        self,
+        mode: str = "full",
+        ref_tilde: bool = True,
+        diag: DiagCollector | None = None,
+    ) -> None:
+        """初始化 LaTeX 渲染器（Initialize LaTeX renderer）.
+
+        Args:
+            mode: Output mode: full/body/fragment (输出模式)
+            ref_tilde: Whether to use tilde before \\ref (是否在 \\ref 前加波浪号)
+            diag: Optional diagnostic collector (可选诊断收集器)
+        """
         self.mode = mode
         self.ref_tilde = ref_tilde
+        self.diag = diag
 
     def render(self, node: Node) -> str:
+        """渲染节点为 LaTeX 字符串（Render node to LaTeX string）."""
         method_name = f"render_{node.type}"
-        method = getattr(self, method_name, None)
+        method: Callable[[Node], str] | None = getattr(self, method_name, None)
         if method is None:
+            # 未处理的节点类型（Unhandled node type, rendering children only）
+            if self.diag is not None:
+                self.diag.warning(
+                    f"Unhandled node type '{node.type}', rendering children only",
+                )
             return self.render_children(node)
         return method(node)
 
@@ -50,23 +91,25 @@ class LaTeXRenderer:
         lines: list[str] = []
 
         # documentclass
-        cls = meta.get("documentclass", "article")
-        opts = meta.get("classoptions", [])
+        cls: str = str(meta.get("documentclass", "article") or "article")
+        opts_raw = meta.get("classoptions", [])
+        opts: list[str] = list(cast(list[str], opts_raw)) if opts_raw else []
         opts_str = f"[{','.join(opts)}]" if opts else ""
         lines.append(f"\\documentclass{opts_str}{{{cls}}}")
 
         # packages (带 options)
-        pkg_opts = meta.get("package_options", {})
-        for pkg in meta.get("packages", []):
+        pkg_opts: dict[str, str] = cast(dict[str, str], meta.get("package_options", {}))
+        packages: list[str] = cast(list[str], meta.get("packages", []))
+        for pkg in packages:
             if pkg in pkg_opts:
                 lines.append(f"\\usepackage[{pkg_opts[pkg]}]{{{pkg}}}")
             else:
                 lines.append(f"\\usepackage{{{pkg}}}")
 
-        # 如果 package_options 中有不在 packages 列表中的包
-        for pkg, opts in pkg_opts.items():
-            if pkg not in meta.get("packages", []):
-                lines.append(f"\\usepackage[{opts}]{{{pkg}}}")
+        # 如果 package_options 中有不在 packages 列表中的包（extra packages in pkg_opts）
+        for pkg, pkg_opt in pkg_opts.items():
+            if pkg not in packages:
+                lines.append(f"\\usepackage[{pkg_opt}]{{{pkg}}}")
 
         # bibstyle
         if bibstyle := meta.get("bibstyle"):
@@ -79,7 +122,7 @@ class LaTeXRenderer:
 
         # extra preamble
         if preamble := meta.get("preamble"):
-            lines.append(preamble)
+            lines.append(str(preamble))
 
         lines.append("")
         lines.append("\\begin{document}")
@@ -89,15 +132,15 @@ class LaTeXRenderer:
         if abstract := meta.get("abstract"):
             lines.append("")
             lines.append("\\begin{abstract}")
-            lines.append(abstract.strip())
+            lines.append(str(abstract).strip())
             lines.append("\\end{abstract}")
 
         lines.append("")
         lines.append(body)
 
         # bibliography
-        bib = meta.get("bibliography", "")
-        bib_mode = meta.get("bibliography_mode", "auto")
+        bib: str = str(meta.get("bibliography", "") or "")
+        bib_mode: str = str(meta.get("bibliography_mode", "auto") or "auto")
         if bib and bib_mode in ("auto", "standalone"):
             bib_name = bib.removesuffix(".bib")
             lines.append(f"\\bibliography{{{bib_name}}}")
@@ -114,7 +157,8 @@ class LaTeXRenderer:
             text = self.render_children(node)
             return f"{text}\n\n"
 
-        cmd = _HEADING_CMDS.get(node.level, "subparagraph")
+        h = cast(Heading, node)
+        cmd = _HEADING_CMDS.get(h.level, "subparagraph")
         text = self.render_children(node)
         result = f"\\{cmd}{{{text}}}\n"
         if label := node.metadata.get("label"):
@@ -126,28 +170,26 @@ class LaTeXRenderer:
         return f"{text}\n\n"
 
     def render_math_block(self, node: Node) -> str:
-        content = node.content
+        mb = cast(MathBlock, node)
         if label := node.metadata.get("label"):
             return (
-                f"\\begin{{equation}}\n"
-                f"{content}\n"
-                f"\\label{{{label}}}\n"
-                f"\\end{{equation}}\n"
+                f"\\begin{{equation}}\n{mb.content}\n\\label{{{label}}}\n\\end{{equation}}\n"
             )
-        return f"\\[\n{content}\n\\]\n"
+        return f"\\[\n{mb.content}\n\\]\n"
 
     def render_code_block(self, node: Node) -> str:
-        lang = node.language
-        if lang:
+        cb = cast(CodeBlock, node)
+        if cb.language:
             return (
-                f"\\begin{{lstlisting}}[language={lang}]\n"
-                f"{node.content}\n"
+                f"\\begin{{lstlisting}}[language={cb.language}]\n"
+                f"{cb.content}\n"
                 f"\\end{{lstlisting}}\n"
             )
-        return f"\\begin{{lstlisting}}\n{node.content}\n\\end{{lstlisting}}\n"
+        return f"\\begin{{lstlisting}}\n{cb.content}\n\\end{{lstlisting}}\n"
 
     def render_list(self, node: Node) -> str:
-        env = "enumerate" if node.ordered else "itemize"
+        lst = cast(List, node)
+        env = "enumerate" if lst.ordered else "itemize"
         items = self.render_children(node)
         return f"\\begin{{{env}}}\n{items}\\end{{{env}}}\n"
 
@@ -160,10 +202,12 @@ class LaTeXRenderer:
         return f"\\begin{{quotation}}\n{content}\\end{{quotation}}\n"
 
     def render_raw_block(self, node: Node) -> str:
-        return f"{node.content}\n"
+        rb = cast(RawBlock, node)
+        return f"{rb.content}\n"
 
     def render_environment(self, node: Node) -> str:
-        name = node.name
+        env = cast(Environment, node)
+        name = env.name
         meta = node.metadata
         opts = meta.get("options", "")
         args = meta.get("args", "")
@@ -186,20 +230,21 @@ class LaTeXRenderer:
         return "\\newpage\n"
 
     def render_figure(self, node: Node) -> str:
+        fig = cast(Figure, node)
         meta = node.metadata
-        placement = meta.get("placement", "htbp")
-        width = meta.get("width", "")
-        caption = meta.get("caption", "")
-        label = meta.get("label", "")
+        placement = str(meta.get("placement", "htbp"))
+        width = str(meta.get("width", ""))
+        caption = str(meta.get("caption", ""))
+        label = str(meta.get("label", ""))
 
         lines = [f"\\begin{{figure}}[{placement}]"]
         lines.append("\\centering")
 
         gfx_opts = f"width={width}" if width else ""
         if gfx_opts:
-            lines.append(f"\\includegraphics[{gfx_opts}]{{{node.src}}}")
+            lines.append(f"\\includegraphics[{gfx_opts}]{{{fig.src}}}")
         else:
-            lines.append(f"\\includegraphics{{{node.src}}}")
+            lines.append(f"\\includegraphics{{{fig.src}}}")
 
         if caption:
             lines.append(f"\\caption{{{caption}}}")
@@ -211,22 +256,23 @@ class LaTeXRenderer:
 
     def render_image(self, node: Node) -> str:
         # Image without figure wrapping — if metadata has caption/label,
-        # promote to figure-like rendering
+        # promote to figure-like rendering (有 caption/label 时升级为 figure 环境)
+        img = cast(Image, node)
         meta = node.metadata
         if meta.get("caption") or meta.get("label"):
-            placement = meta.get("placement", "htbp")
-            width = meta.get("width", "")
-            caption = meta.get("caption", "")
-            label = meta.get("label", "")
+            placement = str(meta.get("placement", "htbp"))
+            width = str(meta.get("width", ""))
+            caption = str(meta.get("caption", ""))
+            label = str(meta.get("label", ""))
 
             lines = [f"\\begin{{figure}}[{placement}]"]
             lines.append("\\centering")
 
             gfx_opts = f"width={width}" if width else ""
             if gfx_opts:
-                lines.append(f"\\includegraphics[{gfx_opts}]{{{node.src}}}")
+                lines.append(f"\\includegraphics[{gfx_opts}]{{{img.src}}}")
             else:
-                lines.append(f"\\includegraphics{{{node.src}}}")
+                lines.append(f"\\includegraphics{{{img.src}}}")
 
             if caption:
                 lines.append(f"\\caption{{{caption}}}")
@@ -236,19 +282,20 @@ class LaTeXRenderer:
             lines.append("\\end{figure}")
             return "\n".join(lines) + "\n"
 
-        return f"\\includegraphics{{{node.src}}}"
+        return f"\\includegraphics{{{img.src}}}"
 
     def render_table(self, node: Node) -> str:
+        tbl = cast(Table, node)
         meta = node.metadata
-        caption = meta.get("caption", "")
-        label = meta.get("label", "")
-        placement = meta.get("placement", "htbp")
+        caption = str(meta.get("caption", ""))
+        label = str(meta.get("label", ""))
+        placement = str(meta.get("placement", "htbp"))
 
-        # Column alignment
+        # Column alignment (列对齐)
         align_map = {"left": "l", "right": "r", "center": "c"}
-        col_spec = "".join(align_map.get(a, "l") for a in node.alignments)
+        col_spec = "".join(align_map.get(a, "l") for a in tbl.alignments)
         if not col_spec:
-            col_spec = "l" * len(node.headers)
+            col_spec = "l" * len(tbl.headers)
 
         lines = [f"\\begin{{table}}[{placement}]"]
         lines.append("\\centering")
@@ -261,13 +308,13 @@ class LaTeXRenderer:
         lines.append(f"\\begin{{tabular}}{{{col_spec}}}")
         lines.append("\\hline")
 
-        # Header row
-        header_row = " & ".join(escape_latex(h) for h in node.headers)
+        # Header row (表头行)
+        header_row = " & ".join(escape_latex(h) for h in tbl.headers)
         lines.append(f"{header_row} \\\\")
         lines.append("\\hline")
 
-        # Data rows
-        for row in node.rows:
+        # Data rows (数据行)
+        for row in tbl.rows:
             data_row = " & ".join(escape_latex(cell) for cell in row)
             lines.append(f"{data_row} \\\\")
 
@@ -279,7 +326,8 @@ class LaTeXRenderer:
     # -- 行内节点 ------------------------------------------------------------
 
     def render_text(self, node: Node) -> str:
-        return escape_latex_with_protection(node.content)
+        txt = cast(Text, node)
+        return escape_latex_with_protection(txt.content)
 
     def render_strong(self, node: Node) -> str:
         content = self.render_children(node)
@@ -290,14 +338,17 @@ class LaTeXRenderer:
         return f"\\textit{{{content}}}"
 
     def render_code_inline(self, node: Node) -> str:
-        return f"\\texttt{{{node.content}}}"
+        ci = cast(CodeInline, node)
+        return f"\\texttt{{{ci.content}}}"
 
     def render_math_inline(self, node: Node) -> str:
-        return f"${node.content}$"
+        mi = cast(MathInline, node)
+        return f"${mi.content}$"
 
     def render_link(self, node: Node) -> str:
+        lnk = cast(Link, node)
         text = self.render_children(node)
-        return f"\\href{{{node.url}}}{{{text}}}"
+        return f"\\href{{{lnk.url}}}{{{text}}}"
 
     def render_softbreak(self, node: Node) -> str:
         return "\n"
@@ -306,16 +357,20 @@ class LaTeXRenderer:
         return "\\\\\n"
 
     def render_citation(self, node: Node) -> str:
-        keys = ",".join(node.keys)
-        return f"\\{node.cmd}{{{keys}}}"
+        cit = cast(Citation, node)
+        keys = ",".join(cit.keys)
+        return f"\\{cit.cmd}{{{keys}}}"
 
     def render_cross_ref(self, node: Node) -> str:
+        ref = cast(CrossRef, node)
         sep = "~" if self.ref_tilde else ""
-        return f"{node.display_text}{sep}\\ref{{{node.label}}}"
+        return f"{ref.display_text}{sep}\\ref{{{ref.label}}}"
 
     def render_footnote_ref(self, node: Node) -> str:
-        return f"\\footnotemark[{node.ref_id}]"
+        fr = cast(FootnoteRef, node)
+        return f"\\footnotemark[{fr.ref_id}]"
 
     def render_footnote_def(self, node: Node) -> str:
+        fd = cast(FootnoteDef, node)
         content = self.render_children(node).strip()
-        return f"\\footnotetext[{node.def_id}]{{{content}}}\n"
+        return f"\\footnotetext[{fd.def_id}]{{{content}}}\n"

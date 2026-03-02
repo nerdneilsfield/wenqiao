@@ -2,9 +2,9 @@
 
 from pathlib import Path
 
-from md_mid.parser import parse
 from md_mid.comment import process_comments
 from md_mid.latex import LaTeXRenderer
+from md_mid.parser import parse
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

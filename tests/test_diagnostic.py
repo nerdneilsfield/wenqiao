@@ -1,4 +1,4 @@
-from md_mid.diagnostic import Diagnostic, DiagLevel, Position
+from md_mid.diagnostic import DiagLevel, Diagnostic, Position
 
 
 def test_create_warning():

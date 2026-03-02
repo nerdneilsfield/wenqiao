@@ -1,9 +1,18 @@
 from pathlib import Path
 
 from md_mid.nodes import (
-    Document, Heading, Paragraph, Text, Strong, Emphasis,
-    MathInline, MathBlock, List, ListItem, Blockquote,
-    CodeInline, SoftBreak, Citation, CrossRef,
+    Blockquote,
+    Citation,
+    CodeInline,
+    CrossRef,
+    Document,
+    Heading,
+    List,
+    ListItem,
+    MathBlock,
+    MathInline,
+    Paragraph,
+    Text,
 )
 from md_mid.parser import parse
 
@@ -135,5 +144,44 @@ def test_regular_link_not_converted():
     doc = parse("[click](http://example.com)")
     para = doc.children[0]
     from md_mid.nodes import Link
+
     links = [c for c in para.children if isinstance(c, Link)]
     assert len(links) == 1
+
+
+# ── Task 4: Citation validation ───────────────────────────────────────────────
+
+
+def test_cite_empty_key_filtered() -> None:
+    """空引用键被过滤（Empty citation keys are filtered out）."""
+    doc = parse("[](cite:,wang2024,)")
+    para = doc.children[0]
+    cites = [c for c in para.children if isinstance(c, Citation)]
+    assert len(cites) == 1
+    # 空键应被过滤（Empty keys should be filtered）
+    assert "" not in cites[0].keys
+    assert "wang2024" in cites[0].keys
+
+
+def test_cite_invalid_cmd_warning() -> None:
+    """无效的引用命令触发 warning（Invalid cite cmd triggers warning）."""
+    from md_mid.diagnostic import DiagCollector
+
+    dc = DiagCollector("test.md")
+    doc = parse("[text](cite:wang2024?cmd=badcmd)", diag=dc)
+    para = doc.children[0]
+    cites = [c for c in para.children if isinstance(c, Citation)]
+    assert len(cites) == 1
+    # 节点应仍然创建（Node should still be created for graceful degradation）
+    assert cites[0].cmd == "badcmd"
+    # 应触发 warning（Should trigger warning）
+    assert any("Unknown citation command" in d.message for d in dc.warnings)
+
+
+def test_cite_valid_cmd_no_warning() -> None:
+    """合法的引用命令不触发 warning（Valid cite cmd does not trigger warning）."""
+    from md_mid.diagnostic import DiagCollector
+
+    dc = DiagCollector("test.md")
+    parse("[text](cite:wang2024?cmd=citet)", diag=dc)
+    assert not any("Unknown citation command" in d.message for d in dc.warnings)

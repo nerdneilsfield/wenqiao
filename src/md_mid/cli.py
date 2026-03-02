@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import click
 
 from md_mid import __version__
-from md_mid.diagnostic import DiagCollector
-from md_mid.parser import parse
 from md_mid.comment import process_comments
+from md_mid.diagnostic import DiagCollector
 from md_mid.latex import LaTeXRenderer
+from md_mid.parser import parse
 
 
 @click.command()
@@ -35,8 +36,14 @@ def main(
     text = input.read_text(encoding="utf-8")
     diag = DiagCollector(str(input))
 
-    doc = parse(text)
+    # 解析并处理注释指令（Parse and process comment directives）
+    doc = parse(text, diag=diag)
     east = process_comments(doc, str(input), diag=diag)
+
+    # 转储 EAST JSON 并退出（Dump EAST as JSON and exit）
+    if dump_east:
+        click.echo(json.dumps(east.to_dict(), ensure_ascii=False, indent=2))
+        return
 
     if verbose:
         for d in diag.diagnostics:
@@ -48,7 +55,7 @@ def main(
         raise SystemExit(1)
 
     if target == "latex":
-        renderer = LaTeXRenderer(mode=mode)
+        renderer = LaTeXRenderer(mode=mode, diag=diag)
         result = renderer.render(east)
     else:
         click.echo(f"Target '{target}' not yet implemented.", err=True)

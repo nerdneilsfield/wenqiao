@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass, field
 
 
@@ -13,15 +14,38 @@ class Node:
     """所有 EAST 节点的基类。"""
 
     children: list[Node] = field(default_factory=list)
-    metadata: dict = field(default_factory=dict)
-    position: dict | None = None  # {"start": {"line":, "column":}, "end": ...}
+    metadata: dict[str, object] = field(default_factory=dict)
+    position: dict[str, object] | None = None  # {"start": {"line":, "column":}, "end": ...}
 
     @property
     def type(self) -> str:
         raise NotImplementedError
 
+    def to_dict(self) -> dict[str, object]:
+        """序列化节点为可 JSON 化的字典（Serialize node to JSON-serializable dict）.
+
+        使用 dataclasses.fields() 自动包含所有字段（Uses dataclasses.fields()）.
+        """
+        result: dict[str, object] = {"type": self.type}
+        for f in dataclasses.fields(self):
+            val = getattr(self, f.name)
+            if f.name == "children":
+                if val:
+                    result["children"] = [c.to_dict() for c in val]
+            elif f.name == "metadata":
+                if val:
+                    result["metadata"] = val
+            elif f.name == "position":
+                if val is not None:
+                    result["position"] = val
+            else:
+                # 额外字段如 content、level、name 等（Extra fields: content, level, name, etc.）
+                result[f.name] = val
+        return result
+
 
 # -- 块级节点 ---------------------------------------------------------------
+
 
 @dataclass
 class Document(Node):
@@ -136,6 +160,7 @@ class ThematicBreak(Node):
 
 
 # -- 行内节点 ---------------------------------------------------------------
+
 
 @dataclass
 class Text(Node):
