@@ -414,3 +414,37 @@ class TestFrontMatter:
         d = Document(children=[Paragraph(children=[Text(content="Body.")])])
         result = render(d)
         assert "---" not in result
+
+
+# ── Task 2 (H3): HTML Escaping (HTML 转义) ───────────────────────
+
+
+class TestHtmlEscaping:
+    """HTML escaping tests (HTML 转义测试)."""
+
+    def test_table_cell_ampersand_escaped(self) -> None:
+        """表格 & 被转义 (Table cell & is escaped)."""
+        t = Table(headers=["H"], alignments=["left"], rows=[["x & y"]])
+        t.metadata["caption"] = "T"
+        result = render(doc(t))
+        assert "x &amp; y" in result
+
+    def test_figure_alt_quotes_escaped(self) -> None:
+        """图片 alt 引号被转义 (Image alt quotes escaped in attribute)."""
+        f = Figure(src="t.png", alt='alt "q"')
+        f.metadata["caption"] = "C"
+        result = render(doc(f))
+        assert 'alt="alt &quot;q&quot;"' in result
+
+    def test_figure_caption_html_escaped(self) -> None:
+        """图标题 HTML 被转义 (Figure caption HTML tags escaped)."""
+        f = Figure(src="a.png", alt="x")
+        f.metadata["caption"] = "<script>alert(1)</script>"
+        result = render(doc(f))
+        assert "&lt;script&gt;" in result
+
+    def test_cross_ref_display_text_escaped(self) -> None:
+        """交叉引用文本被转义 (CrossRef display text HTML escaped)."""
+        r = CrossRef(label="fig:a", display_text="A & B")
+        result = render(doc(Paragraph(children=[r])))
+        assert "A &amp; B" in result

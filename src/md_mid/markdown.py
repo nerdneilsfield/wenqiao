@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import html as _html
 from dataclasses import dataclass, field
 from typing import cast
 
@@ -31,6 +32,11 @@ from md_mid.nodes import (
     Table,
     Text,
 )
+
+
+def _esc(text: str) -> str:
+    """Escape HTML special characters for attributes and content (HTML 特殊字符转义)."""
+    return _html.escape(text, quote=True)
 
 
 @dataclass
@@ -173,8 +179,9 @@ class MarkdownRenderer:
         label = str(h.metadata.get("label", ""))
         if label:
             if self._heading_id_style == "html":
+                # Escape id attribute value (转义 id 属性值)
                 return (
-                    f'<h{h.level} id="{label}">'
+                    f'<h{h.level} id="{_esc(label)}">'
                     f"{text}</h{h.level}>\n\n"
                 )
             else:
@@ -222,7 +229,8 @@ class MarkdownRenderer:
         """数学块渲染 (Math block rendering)."""
         m = cast(MathBlock, node)
         label = str(m.metadata.get("label", ""))
-        anchor = f'<a id="{label}"></a>\n' if label else ""
+        # Escape id attribute value (转义 id 属性值)
+        anchor = f'<a id="{_esc(label)}"></a>\n' if label else ""
         return f"{anchor}$$\n{m.content}\n$$\n\n"
 
     def _render_figure(self, node: Node) -> str:
@@ -254,16 +262,17 @@ class MarkdownRenderer:
         n = self._fig_count
         label = str(metadata.get("label", ""))
         caption = str(metadata.get("caption", ""))
-        id_attr = f' id="{label}"' if label else ""
+        # Escape id attribute and img attributes (转义 id 属性和 img 属性)
+        id_attr = f' id="{_esc(label)}"' if label else ""
         lines: list[str] = [
             f"<figure{id_attr}>",
-            f'  <img src="{src}" alt="{alt}"'
+            f'  <img src="{_esc(src)}" alt="{_esc(alt)}"'
             ' style="max-width:100%">',
         ]
         if caption:
             lines.append(
                 f"  <figcaption><strong>图 {n}</strong>"
-                f": {caption}</figcaption>"
+                f": {_esc(caption)}</figcaption>"
             )
         else:
             lines.append(
@@ -280,19 +289,19 @@ class MarkdownRenderer:
             )
             if model := ai.get("model"):
                 lines.append(
-                    f"    <p><strong>Model</strong>: {model}</p>"
+                    f"    <p><strong>Model</strong>: {_esc(str(model))}</p>"
                 )
             if prompt := ai.get("prompt"):
                 lines.append(
-                    f"    <p><strong>Prompt</strong>: {prompt}</p>"
+                    f"    <p><strong>Prompt</strong>: {_esc(str(prompt))}</p>"
                 )
             if neg := ai.get("negative_prompt"):
                 lines.append(
-                    f"    <p><strong>Negative</strong>: {neg}</p>"
+                    f"    <p><strong>Negative</strong>: {_esc(str(neg))}</p>"
                 )
             if params := ai.get("params"):
                 lines.append(
-                    f"    <p><strong>Params</strong>: {params}</p>"
+                    f"    <p><strong>Params</strong>: {_esc(str(params))}</p>"
                 )
             lines.append("  </details>")
 
@@ -306,17 +315,18 @@ class MarkdownRenderer:
         n = self._tab_count
         label = str(t.metadata.get("label", ""))
         caption = str(t.metadata.get("caption", ""))
-        id_attr = f' id="{label}"' if label else ""
+        # Escape id attribute value (转义 id 属性值)
+        id_attr = f' id="{_esc(label)}"' if label else ""
 
         # 表头 (Table headers)
-        th_cells = "".join(f"<th>{h}</th>" for h in t.headers)
+        th_cells = "".join(f"<th>{_esc(h)}</th>" for h in t.headers)
         header_row = f"      <tr>{th_cells}</tr>"
 
         # 数据行 (Data rows)
         data_rows: list[str] = []
         for row in t.rows:
             td_cells = "".join(
-                f"<td>{cell}</td>" for cell in row
+                f"<td>{_esc(cell)}</td>" for cell in row
             )
             data_rows.append(f"      <tr>{td_cells}</tr>")
 
@@ -334,7 +344,7 @@ class MarkdownRenderer:
         if caption:
             lines.append(
                 f"  <figcaption><strong>表 {n}</strong>"
-                f": {caption}</figcaption>"
+                f": {_esc(caption)}</figcaption>"
             )
         else:
             lines.append(
@@ -401,7 +411,8 @@ class MarkdownRenderer:
     def _render_cross_ref(self, node: Node) -> str:
         """交叉引用 → HTML 锚点 (Cross-ref → HTML anchor link)."""
         r = cast(CrossRef, node)
-        return f'<a href="#{r.label}">{r.display_text}</a>'
+        # Escape href attribute value and link text (转义 href 属性值和链接文本)
+        return f'<a href="#{_esc(r.label)}">{_esc(r.display_text)}</a>'
 
     def _render_softbreak(self, node: Node) -> str:
         """软换行 (Soft break)."""
