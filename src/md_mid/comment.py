@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import datetime
 import re
 
 from ruamel.yaml import YAML
@@ -21,8 +22,7 @@ from md_mid.nodes import (
     RawBlock,
 )
 
-_yaml = YAML()
-_yaml.preserve_quotes = True
+_yaml = YAML(typ="safe")
 
 # <!-- key: value --> 模式
 _COMMENT_RE = re.compile(r"^<!--\s*(.*?)\s*-->$", re.DOTALL)
@@ -92,6 +92,12 @@ def _parse_comment(node: Node) -> tuple[str, object] | None:
         value = _yaml.load(value_str)
     except Exception:
         value = value_str
+
+    # 日期/数值归一化：date: 2024 → "2024", date: 2024-01-15 → "2024-01-15"
+    if isinstance(value, (datetime.date, datetime.datetime)):
+        value = str(value)
+    elif isinstance(value, (int, float)) and key in ("date",):
+        value = str(value)
 
     return key, value
 
