@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import click
@@ -16,7 +17,7 @@ from md_mid.parser import parse
 
 
 @click.command()
-@click.argument("input", type=click.Path(exists=True, path_type=Path))
+@click.argument("input", type=click.Path(path_type=Path))  # No exists=True: allow "-" for stdin
 @click.option(
     "-t", "--target",
     type=click.Choice(["latex", "markdown", "html"]),
@@ -56,12 +57,22 @@ def main(
     locale: str,
 ) -> None:
     """md-mid: 学术写作中间格式转换工具"""
-    text = input.read_text(encoding="utf-8")
-    diag = DiagCollector(str(input))
+    # 读取输入：stdin 或文件 (Read input: stdin or file)
+    if str(input) == "-":
+        text = sys.stdin.read()
+        filename = "<stdin>"
+    else:
+        if not input.exists():
+            click.echo(f"Error: Path '{input}' does not exist.", err=True)
+            raise SystemExit(2)
+        text = input.read_text(encoding="utf-8")
+        filename = str(input)
+
+    diag = DiagCollector(filename)
 
     # 解析并处理注释指令（Parse and process comment directives）
     doc = parse(text, diag=diag)
-    east = process_comments(doc, str(input), diag=diag)
+    east = process_comments(doc, filename, diag=diag)
 
     # 转储 EAST JSON 并退出（Dump EAST as JSON and exit）
     if dump_east:
@@ -108,8 +119,15 @@ def main(
         )
         raise SystemExit(1)
 
-    if output is None:
-        output = input.with_suffix(suffix)
-
-    output.write_text(result, encoding="utf-8")
-    click.echo(f"Written to {output}")
+    # 写入输出：stdout 或文件 (Write output: stdout or file)
+    write_to_stdout = (output is not None and str(output) == "-") or (
+        output is None and str(input) == "-"
+    )
+    if write_to_stdout:
+        # stdout 模式不输出状态信息，避免污染管道 (No status message for pipe)
+        click.echo(result, nl=False)
+    else:
+        if output is None:
+            output = input.with_suffix(suffix)
+        output.write_text(result, encoding="utf-8")
+        click.echo(f"Written to {output}")

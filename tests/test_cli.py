@@ -174,6 +174,49 @@ def test_markdown_with_invalid_bib_no_crash(tmp_path) -> None:
 # ── Phase 3 Task 5: --locale CLI option ──────────────────────────────────────
 
 
+# ── Phase 3 Task 6: stdin/stdout support ─────────────────────────────────────
+
+
+def test_stdin_input(tmp_path) -> None:
+    """stdin 输入 (Read from stdin with -)."""
+    out = tmp_path / "out.tex"
+    result = CliRunner().invoke(
+        main, ["-", "-o", str(out)],
+        input="# Hello\n\nWorld.\n",
+    )
+    assert result.exit_code == 0
+    content = out.read_text()
+    assert "\\section{Hello}" in content
+
+
+def test_stdout_output(tmp_path) -> None:
+    """stdout 输出 (Write to stdout with -o -)."""
+    src = tmp_path / "t.mid.md"
+    src.write_text("# Hello\n\nWorld.\n")
+    result = CliRunner().invoke(main, [str(src), "-o", "-"])
+    assert result.exit_code == 0
+    assert "\\section{Hello}" in result.output
+
+
+def test_stdin_stdout_pipe(tmp_path) -> None:
+    """stdin→stdout 管道 (stdin to stdout pipe)."""
+    result = CliRunner().invoke(
+        main, ["-", "-o", "-"],
+        input="# Hello\n\nWorld.\n",
+    )
+    assert result.exit_code == 0
+    assert "\\section{Hello}" in result.output
+
+
+def test_stdout_no_status_message(tmp_path) -> None:
+    """-o - 不输出状态信息 (stdout mode suppresses 'Written to...')."""
+    src = tmp_path / "t.mid.md"
+    src.write_text("# Hello\n\nWorld.\n")
+    result = CliRunner().invoke(main, [str(src), "-o", "-"])
+    assert result.exit_code == 0
+    assert "Written to" not in result.output
+
+
 def test_markdown_locale_english(tmp_path) -> None:
     """--locale en 使用英文标签 (--locale en uses English labels)."""
     src = tmp_path / "t.mid.md"
