@@ -18,8 +18,10 @@ from md_mid.nodes import (
     CodeInline,
     CrossRef,
     Document,
+    Emphasis,
     Figure,
     FootnoteRef,
+    HardBreak,
     Heading,
     Image,
     Link,
@@ -29,6 +31,8 @@ from md_mid.nodes import (
     Node,
     Paragraph,
     RawBlock,
+    SoftBreak,
+    Strong,
     Table,
     Text,
 )
@@ -334,15 +338,17 @@ class MarkdownRenderer:
         # Escape id attribute value (转义 id 属性值)
         id_attr = f' id="{_esc(label)}"' if label else ""
 
-        # 表头 (Table headers)
-        th_cells = "".join(f"<th>{_esc(h)}</th>" for h in t.headers)
+        # 表头 (Table headers) — render inline nodes as HTML
+        th_cells = "".join(
+            f"<th>{self._render_cell_html(h)}</th>" for h in t.headers
+        )
         header_row = f"      <tr>{th_cells}</tr>"
 
-        # 数据行 (Data rows)
+        # 数据行 (Data rows) — render inline nodes as HTML
         data_rows: list[str] = []
         for row in t.rows:
             td_cells = "".join(
-                f"<td>{_esc(cell)}</td>" for cell in row
+                f"<td>{self._render_cell_html(cell)}</td>" for cell in row
             )
             data_rows.append(f"      <tr>{td_cells}</tr>")
 
@@ -387,6 +393,41 @@ class MarkdownRenderer:
     def _render_thematic_break(self, node: Node) -> str:
         """分隔线渲染 (Thematic break rendering)."""
         return "---\n\n"
+
+    # ── Table cell HTML rendering ────────────────────────────────
+
+    def _render_cell_html(self, nodes: list[Node]) -> str:
+        """Render inline nodes as HTML for table cell content (表格单元格 HTML 渲染)."""
+        return "".join(self._render_node_html(n) for n in nodes)
+
+    def _render_node_html(self, node: Node) -> str:
+        """Render single inline node as HTML (单个行内节点 HTML 渲染)."""
+        if isinstance(node, Text):
+            return _esc(node.content)
+        if isinstance(node, Strong):
+            inner = self._render_cell_html(node.children)
+            return f"<strong>{inner}</strong>"
+        if isinstance(node, Emphasis):
+            inner = self._render_cell_html(node.children)
+            return f"<em>{inner}</em>"
+        if isinstance(node, CodeInline):
+            return f"<code>{_esc(node.content)}</code>"
+        if isinstance(node, MathInline):
+            return f"${node.content}$"
+        if isinstance(node, Link):
+            text = self._render_cell_html(node.children)
+            return f'<a href="{_esc(node.url)}">{text}</a>'
+        if isinstance(node, Citation):
+            refs = "".join(f"[^{key}]" for key in node.keys)
+            return f"{_esc(node.display_text)}{refs}" if node.display_text else refs
+        if isinstance(node, CrossRef):
+            return f'<a href="#{_esc(node.label)}">{_esc(node.display_text)}</a>'
+        if isinstance(node, SoftBreak):
+            return " "
+        if isinstance(node, HardBreak):
+            return "<br>"
+        # Fallback: render children (回退：渲染子节点)
+        return self._render_cell_html(node.children)
 
     # ── Inline nodes ─────────────────────────────────────────────
 

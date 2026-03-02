@@ -26,6 +26,17 @@ from md_mid.nodes import (
 )
 
 
+# 测试辅助函数 (Test helpers for Table cell construction)
+def _cells(*texts: str) -> list[list[Node]]:
+    """Wrap strings as Text node cells (字符串包装为 Text 节点单元格)."""
+    return [[Text(content=t)] for t in texts]
+
+
+def _rows(*row_texts: list[str]) -> list[list[list[Node]]]:
+    """Wrap string rows as Text node rows (字符串行包装为 Text 节点行)."""
+    return [[[Text(content=t)] for t in row] for row in row_texts]
+
+
 def render(node, **kwargs):
     return MarkdownRenderer(**kwargs).render(node)
 
@@ -328,9 +339,9 @@ class TestTable:
     def test_basic_table(self) -> None:
         """Basic table renders as HTML table (基本表格渲染为 HTML 表格)."""
         t = Table(
-            headers=["Method", "RMSE"],
+            headers=_cells("Method", "RMSE"),
             alignments=["left", "left"],
-            rows=[["RANSAC", "2.3"], ["Ours", "1.9"]],
+            rows=_rows(["RANSAC", "2.3"], ["Ours", "1.9"]),
         )
         t.metadata["caption"] = "Results"
         t.metadata["label"] = "tab:results"
@@ -343,10 +354,10 @@ class TestTable:
 
     def test_table_auto_numbering(self) -> None:
         """Tables are auto-numbered sequentially (表自动编号)."""
-        t1 = Table(headers=["A"], alignments=["left"], rows=[["1"]])
+        t1 = Table(headers=_cells("A"), alignments=["left"], rows=_rows(["1"]))
         t1.metadata["caption"] = "First"
         t1.metadata["label"] = "tab:first"
-        t2 = Table(headers=["B"], alignments=["left"], rows=[["2"]])
+        t2 = Table(headers=_cells("B"), alignments=["left"], rows=_rows(["2"]))
         t2.metadata["caption"] = "Second"
         t2.metadata["label"] = "tab:second"
         result = render(doc(t1, t2))
@@ -357,11 +368,82 @@ class TestTable:
         """Tables and figures have separate counters (表和图分开编号)."""
         f = Figure(src="a.png", alt="")
         f.metadata["caption"] = "A figure"
-        t = Table(headers=["X"], alignments=["left"], rows=[["y"]])
+        t = Table(headers=_cells("X"), alignments=["left"], rows=_rows(["y"]))
         t.metadata["caption"] = "A table"
         result = render(doc(f, t))
         assert "图 1" in result
         assert "表 1" in result
+
+
+class TestTableRichCells:
+    """Rich inline content in table cells (表格单元格富文本渲染测试)."""
+
+    def test_bold_in_table_cell(self) -> None:
+        """表格粗体 HTML (Bold in table cell renders as <strong>)."""
+        t = Table(
+            headers=[[Strong(children=[Text(content="H")])]],
+            alignments=["left"],
+            rows=_rows(["V"]),
+        )
+        t.metadata["caption"] = "T"
+        result = render(doc(t))
+        assert "<strong>H</strong>" in result
+
+    def test_italic_in_table_cell(self) -> None:
+        """表格斜体 HTML (Emphasis in table cell renders as <em>)."""
+        t = Table(
+            headers=_cells("H"),
+            alignments=["left"],
+            rows=[[[Emphasis(children=[Text(content="val")])]]],
+        )
+        t.metadata["caption"] = "T"
+        result = render(doc(t))
+        assert "<em>val</em>" in result
+
+    def test_code_in_table_cell(self) -> None:
+        """表格代码 HTML (Code in table cell renders as <code>)."""
+        t = Table(
+            headers=_cells("H"),
+            alignments=["left"],
+            rows=[[[CodeInline(content="x=1")]]],
+        )
+        t.metadata["caption"] = "T"
+        result = render(doc(t))
+        assert "<code>x=1</code>" in result
+
+    def test_math_in_table_cell(self) -> None:
+        """表格数学公式保留 (Math in table cell preserved as $...$)."""
+        t = Table(
+            headers=_cells("H"),
+            alignments=["left"],
+            rows=[[[MathInline(content="x^2")]]],
+        )
+        t.metadata["caption"] = "T"
+        result = render(doc(t))
+        assert "$x^2$" in result
+
+    def test_text_ampersand_still_escaped(self) -> None:
+        """表格纯文本 & 仍被转义 (Plain text & still escaped)."""
+        t = Table(
+            headers=_cells("H"),
+            alignments=["left"],
+            rows=[[[Text(content="x & y")]]],
+        )
+        t.metadata["caption"] = "T"
+        result = render(doc(t))
+        assert "x &amp; y" in result
+
+    def test_cell_html_injection_escaped(self) -> None:
+        """单元格 HTML 注入被转义 (HTML injection in cell is escaped)."""
+        t = Table(
+            headers=_cells("H"),
+            alignments=["left"],
+            rows=[[[Text(content="<script>alert(1)</script>")]]],
+        )
+        t.metadata["caption"] = "T"
+        result = render(doc(t))
+        assert "&lt;script&gt;" in result
+        assert "<script>" not in result
 
 
 # ── Task 6: RawBlock + FrontMatter (原始块和前言) ────────────────
@@ -453,7 +535,7 @@ class TestHtmlEscaping:
 
     def test_table_cell_ampersand_escaped(self) -> None:
         """表格 & 被转义 (Table cell & is escaped)."""
-        t = Table(headers=["H"], alignments=["left"], rows=[["x & y"]])
+        t = Table(headers=_cells("H"), alignments=["left"], rows=[[[Text(content="x & y")]]])
         t.metadata["caption"] = "T"
         result = render(doc(t))
         assert "x &amp; y" in result
