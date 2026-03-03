@@ -447,3 +447,5 @@ def test_generate_figures_flag_no_runner_exits(tmp_path: Path) -> None:
     )
     # Should fail because runner does not exist (runner 不存在，应失败)
     assert result.exit_code != 0
+    # Should show friendly error, not a raw traceback (应显示友好报错，非原始 traceback)
+    assert "Runner load failed" in (result.output or "")

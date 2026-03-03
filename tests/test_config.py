@@ -197,3 +197,9 @@ def test_config_type_error_packages_str() -> None:
     """packages as str raises TypeError (packages 为 str 时抛出 TypeError)."""
     with pytest.raises(TypeError, match="packages"):
         MdMidConfig.from_dict({"packages": "numpy"})
+
+
+def test_config_type_error_classoptions_int_element() -> None:
+    """classoptions with int element raises TypeError (classoptions 含 int 元素时抛出 TypeError)."""
+    with pytest.raises(TypeError, match=r"classoptions\[0\]"):
+        MdMidConfig.from_dict({"classoptions": [12]})

@@ -577,3 +577,24 @@ class TestHtmlFootnoteOrder:
         assert pos_a != -1, "Footnote a should appear in output (脚注 a 应出现在输出中)"
         assert pos_b != -1, "Footnote b should appear in output (脚注 b 应出现在输出中)"
         assert pos_a < pos_b, "Footnote a should appear before b (脚注 a 应在 b 之前)"
+
+
+# ── URL safety: data:image/svg+xml blocked ───────────────────────────────────
+
+
+class TestHtmlLinkDataSvg:
+    """data:image/svg+xml scheme is blocked (data:image/svg+xml scheme 被阻止)."""
+
+    def test_link_data_svg_blocked(self) -> None:
+        """data:image/svg+xml link renders text only (data:image/svg+xml 仅渲染文本)."""
+        p = Paragraph(
+            children=[
+                Link(
+                    url="data:image/svg+xml,<svg onload='alert(1)'>",
+                    children=[Text(content="evil")],
+                ),
+            ]
+        )
+        result = render(doc(p))
+        assert "evil" in result
+        assert "href" not in result

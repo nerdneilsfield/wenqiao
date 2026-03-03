@@ -11,6 +11,7 @@ from md_mid.nodes import (
     HardBreak,
     Heading,
     Image,
+    Link,
     List,
     ListItem,
     MathBlock,
@@ -955,3 +956,61 @@ class TestStateLeak:
         # Doc B output must not contain any footnote definitions (文档 B 不应有脚注定义)
         assert "[^leak]:" not in result_b
         assert "Leaked note" not in result_b
+
+
+# ── P0: Markdown RawBlock sanitization ────────────────────────────────────────
+
+
+class TestMarkdownRawBlockSanitize:
+    """Markdown RawBlock HTML is sanitized (Markdown 原始 HTML 块清洗测试)."""
+
+    def test_markdown_raw_html_script_stripped(self) -> None:
+        """Script tags in raw HTML are stripped in Markdown output.
+
+        Markdown 输出中原始 HTML 的 script 标签被剥离。
+        """
+        rb = RawBlock(content="<script>alert(1)</script><p>ok</p>", kind="html")
+        result = render(doc(rb))
+        assert "<p>ok</p>" in result
+        assert "<script>" not in result
+        assert "alert" not in result
+
+    def test_markdown_raw_html_safe_preserved(self) -> None:
+        """Safe HTML in raw block is preserved (安全 HTML 保留)."""
+        rb = RawBlock(content='<div class="note">text</div>', kind="html")
+        result = render(doc(rb))
+        assert '<div class="note">text</div>' in result
+
+
+# ── P0: Markdown table link scheme filtering ──────────────────────────────────
+
+
+class TestMarkdownTableLinkScheme:
+    """Markdown table cell links filter dangerous schemes (Markdown 表格链接 scheme 过滤)."""
+
+    def test_markdown_table_link_javascript_blocked(self) -> None:
+        """javascript: link in table cell renders text only (javascript: 链接仅渲染文本)."""
+        cell_link = Link(
+            url="javascript:alert(1)",
+            children=[Text(content="click")],
+        )
+        t = Table(
+            headers=_cells("Col"),
+            rows=[[[cell_link]]],
+        )
+        result = render(doc(t))
+        assert "click" in result
+        assert "javascript:" not in result
+
+    def test_markdown_table_link_safe_url_preserved(self) -> None:
+        """Safe https link in table cell is preserved (安全 https 链接保留)."""
+        cell_link = Link(
+            url="https://example.com",
+            children=[Text(content="link")],
+        )
+        t = Table(
+            headers=_cells("Col"),
+            rows=[[[cell_link]]],
+        )
+        result = render(doc(t))
+        assert 'href="https://example.com"' in result
