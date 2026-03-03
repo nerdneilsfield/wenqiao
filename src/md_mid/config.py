@@ -86,7 +86,12 @@ class MdMidConfig:
     def from_dict(cls, data: dict[str, object]) -> MdMidConfig:
         """Build config from dict with kebab/snake key normalization (从字典构建配置).
 
-        Unknown keys are ignored (未知键被忽略).
+        Values of list or dict type are shallow-copied to prevent aliasing
+        (list 和 dict 值浅拷贝以防止别名问题).
+
+        Note:
+            No type coercion is performed. Callers are responsible for ensuring
+            value types match the declared field types (调用方需确保值类型与字段类型匹配).
 
         Args:
             data: Dictionary with kebab-case or snake_case keys (键可为 kebab 或 snake)
@@ -99,6 +104,11 @@ class MdMidConfig:
         for key, value in data.items():
             norm = key.replace("-", "_")
             if norm in valid_fields:
+                # Shallow-copy mutable containers to prevent aliasing (浅拷贝可变容器防止别名)
+                if isinstance(value, list):
+                    value = list(value)
+                elif isinstance(value, dict):
+                    value = dict(value)
                 kwargs[norm] = value
         return cls(**kwargs)  # type: ignore[arg-type]
 

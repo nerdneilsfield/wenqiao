@@ -83,3 +83,11 @@ def test_resolve_config_mutable_defaults_not_shared() -> None:
     cfg2 = resolve_config()
     cfg1.classoptions.append("draft")
     assert "draft" not in cfg2.classoptions
+
+
+def test_config_from_dict_list_value_is_copied() -> None:
+    """from_dict shallow-copies list values to prevent aliasing (from_dict 浅拷贝列表防别名)."""
+    source = ["11pt", "a4paper"]
+    cfg = MdMidConfig.from_dict({"classoptions": source})
+    source.append("draft")
+    assert "draft" not in cfg.classoptions
