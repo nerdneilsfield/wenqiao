@@ -439,7 +439,7 @@ def _process_attachments(doc: Document, diag: DiagCollector) -> None:
 
 def _process_attachments_in(children: list[Node], diag: DiagCollector) -> None:
     """在子节点列表中处理向上附着（Process attach-up directives in children list）."""
-    to_remove: list[int] = []
+    to_remove: set[int] = set()
 
     for i, child in enumerate(children):
         parsed = _parse_comment(child)
@@ -476,14 +476,14 @@ def _process_attachments_in(children: list[Node], diag: DiagCollector) -> None:
         else:
             prev.metadata[nkey] = value
 
-        to_remove.append(i)
+        to_remove.add(i)
 
-    for i in reversed(to_remove):
+    for i in sorted(to_remove, reverse=True):
         children.pop(i)
 
 
 def _find_prev_sibling(
-    children: list[Node], current_idx: int, skip_indices: list[int]
+    children: list[Node], current_idx: int, skip_indices: set[int]
 ) -> Node | None:
     """找到 current_idx 之前第一个非注释、非已删除的兄弟节点。
 
