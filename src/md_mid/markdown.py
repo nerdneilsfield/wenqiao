@@ -343,17 +343,11 @@ class MarkdownRenderer:
         # AI 信息折叠块 (AI info details block)
         ai = metadata.get("ai")
         if isinstance(ai, dict):
-            lines.append("  <details>")
-            lines.append("    <summary>🎨 AI Generation Info</summary>")
-            if model := ai.get("model"):
-                lines.append(f"    <p><strong>Model</strong>: {_esc(str(model))}</p>")
-            if prompt := ai.get("prompt"):
-                lines.append(f"    <p><strong>Prompt</strong>: {_esc(str(prompt))}</p>")
-            if neg := ai.get("negative_prompt"):
-                lines.append(f"    <p><strong>Negative</strong>: {_esc(str(neg))}</p>")
-            if params := ai.get("params"):
-                lines.append(f"    <p><strong>Params</strong>: {_esc(str(params))}</p>")
-            lines.append("  </details>")
+            from md_mid.ai_meta import render_ai_details_html
+
+            lines.extend(
+                render_ai_details_html(ai, _esc, summary="\U0001f3a8 AI Generation Info")
+            )
 
         lines.append("</figure>")
         return "\n".join(lines)
@@ -404,11 +398,13 @@ class MarkdownRenderer:
         return self._render_children(node)
 
     def _render_raw_block(self, node: Node) -> str:
-        """原始块渲染 (Raw block: HTML passthrough or LaTeX details fold)."""
+        """原始块渲染 (Raw block: sanitized HTML or LaTeX details fold)."""
         rb = cast(RawBlock, node)
         if rb.kind == "html":
-            # HTML inline/block: pass through as-is (HTML 原样透传)
-            return rb.content
+            # Sanitize raw HTML to prevent XSS (清洗原始 HTML 防止 XSS)
+            from md_mid.sanitize import sanitize_html
+
+            return sanitize_html(rb.content)
         # LaTeX raw block: wrap in details fold (LaTeX 块：折叠显示)
         return (
             "<details>\n"
@@ -443,6 +439,11 @@ class MarkdownRenderer:
             return f"${_esc(node.content)}$"
         if isinstance(node, Link):
             text = self._render_cell_html(node.children)
+            # Block dangerous schemes in table cell links (阻止表格单元格中的危险 scheme)
+            from md_mid.url_check import is_unsafe_url
+
+            if is_unsafe_url(node.url):
+                return text
             return f'<a href="{_esc(node.url)}">{text}</a>'
         if isinstance(node, Citation):
             refs = "".join(f"[^{key}]" for key in node.keys)
