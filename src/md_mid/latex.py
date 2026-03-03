@@ -65,7 +65,7 @@ class LaTeXRenderer:
         self.mode = mode
         self.ref_tilde = ref_tilde
         self.code_style = code_style
-        self.thematic_break_style = thematic_break
+        self.thematic_break = thematic_break
         self.diag = diag
 
     def render(self, node: Node) -> str:

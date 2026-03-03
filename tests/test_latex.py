@@ -172,6 +172,7 @@ class TestBlock:
         c = CodeBlock(content="hello", language="")
         result = render(c, code_style="minted")
         assert "\\begin{verbatim}" in result
+        assert "\\end{verbatim}" in result
 
     def test_code_block_lstlisting_default(self):
         """Default lstlisting code block unchanged (默认 lstlisting 不变)."""
