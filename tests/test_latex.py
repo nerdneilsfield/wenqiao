@@ -9,6 +9,8 @@ from md_mid.nodes import (
     Emphasis,
     Environment,
     Figure,
+    FootnoteDef,
+    FootnoteRef,
     HardBreak,
     Heading,
     Link,
@@ -521,3 +523,65 @@ class TestEnvironmentArgs:
         env.metadata["args"] = [r"0.5\textwidth"]
         result = render(env)
         assert r"\begin{minipage}[c]{0.5\textwidth}" in result
+
+
+# ── Task 9: LaTeX Two-Pass Footnote Rendering ─────────────────────────────────
+
+
+class TestLatexFootnotes:
+    """LaTeX two-pass footnote rendering tests (LaTeX 两遍脚注渲染测试)."""
+
+    def test_footnote_expands_inline(self) -> None:
+        """Footnote expands at reference site (脚注在引用处展开).
+
+        FootnoteRef is replaced by \\footnote{content} from the matching FootnoteDef.
+        (FootnoteRef 被匹配的 FootnoteDef 内容替换为 \\footnote{content}。)
+        """
+        fn_def = FootnoteDef(
+            def_id="0",
+            children=[Paragraph(children=[Text(content="My note")])],
+        )
+        p = Paragraph(children=[
+            Text(content="See this"),
+            FootnoteRef(ref_id="0"),
+            Text(content=" and more."),
+        ])
+        doc = Document(children=[p, fn_def])
+        result = render(doc)
+        assert "\\footnote{My note}" in result
+        # FootnoteDef itself should not appear in output (脚注定义不出现在输出中)
+        assert "\\footnotetext" not in result
+
+    def test_footnote_unknown_ref_fallback(self) -> None:
+        """Unknown footnote ref falls back gracefully (未知脚注引用回退).
+
+        When a FootnoteRef has no matching def, produces \\footnote{[ref_id]}.
+        (当 FootnoteRef 没有匹配定义时，产出 \\footnote{[ref_id]}。)
+        """
+        p = Paragraph(children=[
+            Text(content="See this"),
+            FootnoteRef(ref_id="999"),
+        ])
+        doc = Document(children=[p])
+        result = render(doc)
+        # No crash, produces some footnote marker (不崩溃，产出某种脚注标记)
+        assert "\\footnote" in result
+
+    def test_footnote_multiple_refs(self) -> None:
+        """Multiple footnotes each expand correctly (多个脚注各自正确展开).
+
+        Two FootnoteDefs and two FootnoteRefs each expand to the correct content.
+        (两个脚注定义和引用各自展开为正确内容。)
+        """
+        fn1 = FootnoteDef(def_id="0", children=[Paragraph(children=[Text(content="Note A")])])
+        fn2 = FootnoteDef(def_id="1", children=[Paragraph(children=[Text(content="Note B")])])
+        p = Paragraph(children=[
+            Text(content="First"),
+            FootnoteRef(ref_id="0"),
+            Text(content=" second"),
+            FootnoteRef(ref_id="1"),
+        ])
+        doc = Document(children=[p, fn1, fn2])
+        result = render(doc)
+        assert "\\footnote{Note A}" in result
+        assert "\\footnote{Note B}" in result

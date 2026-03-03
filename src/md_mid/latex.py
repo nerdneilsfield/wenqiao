@@ -51,6 +51,7 @@ class LaTeXRenderer:
         ref_tilde: bool = True,
         code_style: str = "lstlisting",
         thematic_break: str = "newpage",
+        locale: str = "zh",
         diag: DiagCollector | None = None,
     ) -> None:
         """初始化 LaTeX 渲染器（Initialize LaTeX renderer）.
@@ -60,12 +61,15 @@ class LaTeXRenderer:
             ref_tilde: Whether to use tilde before \\ref (是否在 \\ref 前加波浪号)
             code_style: Code block style: lstlisting | minted (代码块样式)
             thematic_break: Thematic break style: newpage | hrule | ignore (分隔线样式)
+            locale: Output locale: zh | en (输出语言环境)
             diag: Optional diagnostic collector (可选诊断收集器)
         """
         self.mode = mode
         self.ref_tilde = ref_tilde
         self.code_style = code_style
         self.thematic_break = thematic_break
+        self.locale = locale
+        self._fn_defs: dict[str, Node] = {}  # footnote defs by id (按 ID 索引的脚注定义)
         self.diag = diag
 
     def render(self, node: Node) -> str:
@@ -84,9 +88,25 @@ class LaTeXRenderer:
     def render_children(self, node: Node) -> str:
         return "".join(self.render(child) for child in node.children)
 
+    def _collect_footnote_defs(self, node: Node) -> None:
+        """Pre-scan tree to collect FootnoteDef nodes by id (预扫描收集脚注定义).
+
+        Called once from render_document(), not from render().
+        (从 render_document() 调用一次，而不是从 render() 调用。)
+
+        Args:
+            node: Node to scan recursively (递归扫描的节点)
+        """
+        if isinstance(node, FootnoteDef):
+            self._fn_defs[node.def_id] = node
+        for child in node.children:
+            self._collect_footnote_defs(child)
+
     # -- 文档 ----------------------------------------------------------------
 
     def render_document(self, node: Node) -> str:
+        # Pre-scan: collect all FootnoteDef nodes (预扫描：收集所有脚注定义)
+        self._collect_footnote_defs(node)
         body = self.render_children(node)
 
         if self.mode in ("body", "fragment"):
@@ -417,10 +437,30 @@ class LaTeXRenderer:
         return f"{ref.display_text}{sep}\\ref{{{ref.label}}}"
 
     def render_footnote_ref(self, node: Node) -> str:
+        """Expand footnote inline at reference site (在引用处展开脚注).
+
+        Args:
+            node: FootnoteRef node (FootnoteRef 节点)
+
+        Returns:
+            \\footnote{content} with the content from the matching def (内联展开的脚注)
+        """
         fr = cast(FootnoteRef, node)
-        return f"\\footnotemark[{fr.ref_id}]"
+        fn_def = self._fn_defs.get(fr.ref_id)
+        if fn_def is not None:
+            # Render def children and strip whitespace (渲染定义内容并去除首尾空白)
+            content = self.render_children(fn_def).strip()
+            return f"\\footnote{{{content}}}"
+        # Fallback: unknown ref — emit marker (回退：未知引用)
+        return f"\\footnote{{[{fr.ref_id}]}}"
 
     def render_footnote_def(self, node: Node) -> str:
-        fd = cast(FootnoteDef, node)
-        content = self.render_children(node).strip()
-        return f"\\footnotetext[{fd.def_id}]{{{content}}}\n"
+        """Skip — content already expanded at FootnoteRef site (跳过 — 内容已在引用处展开).
+
+        Args:
+            node: FootnoteDef node (FootnoteDef 节点)
+
+        Returns:
+            Empty string (空字符串)
+        """
+        return ""
