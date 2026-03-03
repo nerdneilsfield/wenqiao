@@ -49,13 +49,13 @@ from md_mid.parser import parse
 )
 @click.option(
     "--template", "template_path",
-    type=click.Path(path_type=Path),
+    type=click.Path(exists=True, path_type=Path),
     default=None,
     help="LaTeX template file (.yaml)",
 )
 @click.option(
     "--config", "config_path",
-    type=click.Path(path_type=Path),
+    type=click.Path(exists=True, path_type=Path),
     default=None,
     help="External config file (md-mid.yaml)",
 )
@@ -138,22 +138,26 @@ def main(
         raise SystemExit(1)
 
     if target == "latex":
-        # 将模板元数据回注 EAST 用于前言生成，文档指令优先（低优先级用 setdefault）
-        # (Inject template metadata into east.metadata for preamble generation;
-        #  document directives take priority via setdefault)
-        for field in (
-            "documentclass", "classoptions", "packages", "package_options",
-            "bibliography", "bibstyle", "preamble",
-        ):
-            val = getattr(cfg, field)
-            if val:  # 仅注入非空值 (Only inject non-empty values)
-                east.metadata.setdefault(field, val)
+        # Inject resolved preamble metadata into EAST for renderer use
+        # (将解析后的元数据回注 EAST 供渲染器使用)
+        east.metadata.update({
+            "documentclass": cfg.documentclass,
+            "classoptions": cfg.classoptions,
+            "packages": cfg.packages,
+            "package_options": cfg.package_options,
+            "bibliography": cfg.bibliography,
+            "bibstyle": cfg.bibstyle,
+            "preamble": cfg.preamble,
+            "bibliography_mode": cfg.bibliography_mode,
+        })
 
-        # 将解析后的 bibliography_mode 注入 EAST 元数据，供渲染器使用
-        # (Inject resolved bibliography_mode into east.metadata for renderer)
-        east.metadata["bibliography_mode"] = cfg.bibliography_mode
-
-        renderer = LaTeXRenderer(mode=cfg.mode, diag=diag)
+        renderer = LaTeXRenderer(
+            mode=cfg.mode,
+            ref_tilde=cfg.ref_tilde,
+            # code_style and thematic_break will be added in Tasks 5/6
+            # (code_style 和 thematic_break 在任务 5/6 中添加)
+            diag=diag,
+        )
         result = renderer.render(east)
         suffix = ".tex"
     elif target == "markdown":
