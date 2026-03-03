@@ -212,14 +212,19 @@ def main(
         # Base directory for resolving image paths (图片路径解析基目录)
         base_dir = Path(filename).parent if filename != "<stdin>" else Path.cwd()
 
-        success, fail = run_generate_figures(
-            east,
-            base_dir=base_dir,
-            runner_path=figures_runner,
-            config=figures_config,
-            force=force_regenerate,
-            echo=lambda msg: click.echo(msg, err=True),
-        )
+        try:
+            success, fail = run_generate_figures(
+                east,
+                base_dir=base_dir,
+                runner_path=figures_runner,
+                config=figures_config,
+                force=force_regenerate,
+                echo=lambda msg: click.echo(msg, err=True),
+            )
+        except (ImportError, FileNotFoundError, OSError) as e:
+            # Friendly error for runner load failures (runner 加载失败友好报错)
+            click.echo(f"[generate-figures] Runner load failed: {e}", err=True)
+            raise SystemExit(1)
         if fail > 0:
             click.echo(
                 f"[generate-figures] {fail} figure(s) failed to generate.",
