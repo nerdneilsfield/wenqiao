@@ -74,25 +74,29 @@ from md_mid.parser import parse
     help="Bibliography output strategy",
 )
 @click.option(
-    "--generate-figures", "generate_figures",
+    "--generate-figures",
+    "generate_figures",
     is_flag=True,
     default=False,
     help="Generate AI figures (ai-generated: true) via runner before rendering",
 )
 @click.option(
-    "--figures-runner", "figures_runner",
+    "--figures-runner",
+    "figures_runner",
     type=click.Path(path_type=Path),
     default=None,
-    help="Path to nanobanana-compatible runner script",
+    help="Path to nanobanana-compatible runner script (WARNING: executes as Python code)",
 )
 @click.option(
-    "--figures-config", "figures_config",
+    "--figures-config",
+    "figures_config",
     type=click.Path(exists=True, path_type=Path),
     default=None,
     help="TOML config for runner (API key, model, etc.)",
 )
 @click.option(
-    "--force-regenerate", "force_regenerate",
+    "--force-regenerate",
+    "force_regenerate",
     is_flag=True,
     default=False,
     help="Re-generate AI figures even if image files already exist",
@@ -162,6 +166,11 @@ def main(
     # Effective target: CLI > config > default (有效输出目标：CLI > 配置 > 默认 latex)
     effective_target: str = target if target is not None else cfg.target
 
+    # Validate target before side effects (先校验目标再执行副作用)
+    if effective_target not in ("latex", "markdown", "html"):
+        click.echo(f"Target '{effective_target}' not yet implemented.", err=True)
+        raise SystemExit(1)
+
     # 转储 EAST JSON 并退出（Dump EAST as JSON and exit）
     if dump_east:
         click.echo(json.dumps(east.to_dict(), ensure_ascii=False, indent=2))
@@ -184,13 +193,17 @@ def main(
         if figures_runner is None:
             # Default: nanobanana.py from generate-figures skill (默认 runner 路径)
             skill_runner = (
-                Path.home() / ".claude" / "skills" / "generate-figures"
-                / "tools" / "fig" / "nanobanana.py"
+                Path.home()
+                / ".claude"
+                / "skills"
+                / "generate-figures"
+                / "tools"
+                / "fig"
+                / "nanobanana.py"
             )
             if not skill_runner.exists():
                 click.echo(
-                    "[generate-figures] Runner not found. "
-                    "Specify --figures-runner PATH.",
+                    "[generate-figures] Runner not found. Specify --figures-runner PATH.",
                     err=True,
                 )
                 raise SystemExit(1)
@@ -277,6 +290,15 @@ def main(
                 bib_html = parse_bib(bib_path.read_text(encoding="utf-8"))
             except Exception as exc:
                 click.echo(f"[WARNING] Failed to parse {bib_path}: {exc}", err=True)
+        # Inject config metadata for HTML renderer (注入配置元数据供 HTML 渲染器使用)
+        east.metadata.update(
+            {
+                "title": cfg.title,
+                "author": cfg.author,
+                "date": cfg.date,
+                "abstract": cfg.abstract,
+            }
+        )
         renderer_html = HTMLRenderer(
             mode=cfg.mode,
             bib=bib_html,
@@ -285,10 +307,6 @@ def main(
         )
         result = renderer_html.render(east)
         suffix = ".html"
-    else:
-        click.echo(f"Target '{effective_target}' not yet implemented.", err=True)
-        raise SystemExit(1)
-
     # 写入输出：stdout 或文件 (Write output: stdout or file)
     write_to_stdout = (output is not None and str(output) == "-") or (
         output is None and str(input) == "-"
