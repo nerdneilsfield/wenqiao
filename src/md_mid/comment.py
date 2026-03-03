@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import datetime
 import re
+from pathlib import Path
 from typing import cast
 
 from ruamel.yaml import YAML
@@ -80,7 +81,9 @@ ENV_DIRECTIVES = frozenset(
 )
 
 # 所有已知指令键（All known directive keys, for unknown key detection）
-_ALL_KNOWN_DIRECTIVES = DOCUMENT_DIRECTIVES | ATTACH_UP_DIRECTIVES | frozenset({"begin", "end"})
+_ALL_KNOWN_DIRECTIVES = (
+    DOCUMENT_DIRECTIVES | ATTACH_UP_DIRECTIVES | frozenset({"begin", "end", "include-tex"})
+)
 
 
 def process_comments(
@@ -96,8 +99,12 @@ def process_comments(
     if diag is None:
         diag = DiagCollector(filename)
 
+    # Resolve source directory for include-tex path resolution (解析源目录用于 include-tex 路径解析)
+    source_dir = Path(filename).parent if filename != "<stdin>" else Path(".")
+
     _collect_document_directives(doc, diag)
     _process_environments(doc, diag)
+    _process_includes(doc.children, source_dir, diag)  # Phase 2.5: include-tex (引入处理)
     _process_attachments(doc, diag)
 
     return doc
@@ -354,6 +361,59 @@ def _text_from_paragraph(para: Paragraph) -> str:
                 if hasattr(sub, "content"):
                     parts.append(sub.content)
     return "".join(parts)
+
+
+def _process_includes(
+    children: list[Node],
+    source_dir: Path,
+    diag: DiagCollector,
+) -> None:
+    """处理 include-tex 指令，将注释节点替换为 RawBlock（Process include-tex directives）.
+
+    Scans children list for include-tex directives and replaces each with a RawBlock
+    containing the verbatim content of the referenced .tex file.
+    Includes are one-level only — included content is not scanned for further
+    include-tex directives. This prevents circular inclusion.
+    (引入为单层 — 引入的内容不再扫描 include-tex，防止循环引入。)
+
+    Args:
+        children: Node list to scan (待扫描的节点列表)
+        source_dir: Directory of source file for relative path resolution (源文件目录)
+        diag: Diagnostic collector (诊断收集器)
+    """
+    i = 0
+    while i < len(children):
+        child = children[i]
+        parsed = _parse_comment(child)
+        if parsed is not None:
+            key, value = parsed
+            if key == "include-tex":
+                tex_rel = str(value).strip()
+                tex_path = (source_dir / tex_rel).resolve()
+                # Security: path traversal check (安全：路径遍历检查)
+                try:
+                    tex_path.relative_to(source_dir.resolve())
+                except ValueError:
+                    diag.error(
+                        f"include-tex path outside source directory"
+                        f" (path traversal rejected): {tex_rel}",
+                        _pos_from_node(child),
+                    )
+                    i += 1
+                    continue
+                if not tex_path.exists():
+                    diag.error(
+                        f"include-tex file not found: {tex_rel}",
+                        _pos_from_node(child),
+                    )
+                    i += 1
+                    continue
+                # Read verbatim — no strip() (原样读取 — 不去空白)
+                content = tex_path.read_text(encoding="utf-8")
+                children[i] = RawBlock(content=content, position=child.position)
+                i += 1
+                continue
+        i += 1
 
 
 def _process_attachments(doc: Document, diag: DiagCollector) -> None:

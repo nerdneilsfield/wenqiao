@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from md_mid.comment import process_comments
 from md_mid.diagnostic import DiagCollector
 from md_mid.nodes import (
@@ -224,3 +226,80 @@ def test_misplaced_directive_removed_from_ast() -> None:
     assert any("after content" in d.message for d in dc.warnings)
     # The misplaced node must be removed — AST shrinks by at least 1 (AST 节点数减少至少 1)
     assert len(east.children) < node_count_before
+
+
+# ── Task 7: include-tex directive ─────────────────────────────────────────────
+
+
+def test_include_tex_creates_raw_block(tmp_path: Path) -> None:
+    """include-tex creates RawBlock from file (include-tex 创建 RawBlock)."""
+    tex_file = tmp_path / "frag.tex"
+    tex_file.write_text("\\begin{equation}\nx^2\n\\end{equation}\n")
+    src_file = tmp_path / "t.mid.md"
+    md_text = "# Intro\n\n<!-- include-tex: frag.tex -->\n\nMore text.\n"
+    doc = parse(md_text)
+    east = process_comments(doc, str(src_file), diag=DiagCollector(str(src_file)))
+    raws = [c for c in east.children if isinstance(c, RawBlock)]
+    assert len(raws) == 1
+    assert "\\begin{equation}" in raws[0].content
+
+
+def test_include_tex_relative_path(tmp_path: Path) -> None:
+    """include-tex resolves relative path (include-tex 相对路径解析)."""
+    sub = tmp_path / "tables"
+    sub.mkdir()
+    tex = sub / "complex.tex"
+    tex.write_text("\\begin{tabular}{ll}\nA & B\n\\end{tabular}\n")
+    src = tmp_path / "paper.mid.md"
+    md = "# Tables\n\n<!-- include-tex: tables/complex.tex -->\n"
+    doc = parse(md)
+    east = process_comments(doc, str(src), diag=DiagCollector(str(src)))
+    raws = [c for c in east.children if isinstance(c, RawBlock)]
+    assert len(raws) == 1
+    assert "tabular" in raws[0].content
+
+
+def test_include_tex_file_not_found(tmp_path: Path) -> None:
+    """Missing include file triggers error (文件不存在触发错误)."""
+    src = tmp_path / "t.mid.md"
+    md = "# Intro\n\n<!-- include-tex: nonexistent.tex -->\n"
+    doc = parse(md)
+    dc = DiagCollector(str(src))
+    process_comments(doc, str(src), diag=dc)
+    assert dc.has_errors
+    assert any("not found" in d.message.lower() for d in dc.errors)
+
+
+def test_include_tex_path_traversal_rejected(tmp_path: Path) -> None:
+    """Path traversal in include-tex is rejected (路径遍历被拒绝)."""
+    # Create a file outside source dir (在源目录外创建文件)
+    outer = tmp_path / "outer"
+    outer.mkdir()
+    secret = outer / "secret.tex"
+    secret.write_text("SECRET CONTENT")
+    # Source file is in a subdirectory (源文件在子目录中)
+    inner = tmp_path / "inner"
+    inner.mkdir()
+    src = inner / "paper.mid.md"
+    md = "<!-- include-tex: ../outer/secret.tex -->\n"
+    doc = parse(md)
+    dc = DiagCollector(str(src))
+    process_comments(doc, str(src), diag=dc)
+    assert dc.has_errors
+    assert any(
+        "traversal" in d.message.lower() or "outside" in d.message.lower()
+        for d in dc.errors
+    )
+
+
+def test_include_tex_preserves_content_verbatim(tmp_path: Path) -> None:
+    """include-tex preserves content verbatim, no strip (内容原样保留)."""
+    tex = tmp_path / "frag.tex"
+    # Leading/trailing whitespace matters in TeX (TeX 中前后空白有意义)
+    tex.write_text("\n  \\command\n\n")
+    src = tmp_path / "t.mid.md"
+    doc = parse("<!-- include-tex: frag.tex -->\n")
+    east = process_comments(doc, str(src), diag=DiagCollector(str(src)))
+    raws = [c for c in east.children if isinstance(c, RawBlock)]
+    assert len(raws) == 1
+    assert raws[0].content == "\n  \\command\n\n"
