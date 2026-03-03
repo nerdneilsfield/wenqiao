@@ -232,6 +232,17 @@ class LaTeXRenderer:
         return f"{rb.content}\n"
 
     def render_environment(self, node: Node) -> str:
+        """渲染 LaTeX 环境（Render LaTeX environment with optional options and args）.
+
+        Builds the \\begin{name}[options]{arg1}{arg2}...\\end{name} block.
+        (构建 \\begin{name}[options]{arg1}{arg2}...\\end{name} 块。)
+
+        Args:
+            node: An Environment node (环境节点)
+
+        Returns:
+            LaTeX string for the environment (环境对应的 LaTeX 字符串)
+        """
         env = cast(Environment, node)
         name = env.name
         meta = node.metadata
@@ -241,16 +252,20 @@ class LaTeXRenderer:
         header = f"\\begin{{{name}}}"
         if opts:
             header += f"[{opts}]"
-        if args:
+        # Handle args as list or string (处理列表或字符串参数)
+        if isinstance(args, list):
+            for arg in args:
+                header += f"{{{arg}}}"
+        elif args:
             header += f"{{{args}}}"
 
         content = self.render_children(node)
-        result = f"{header}\n{content}\\end{{{name}}}\n"
 
+        # Early return with label when present (有 label 时提前返回)
         if label := meta.get("label"):
-            result = f"{header}\n\\label{{{label}}}\n{content}\\end{{{name}}}\n"
+            return f"{header}\n\\label{{{label}}}\n{content}\\end{{{name}}}\n"
 
-        return result
+        return f"{header}\n{content}\\end{{{name}}}\n"
 
     def render_thematic_break(self, node: Node) -> str:
         """渲染分隔线 (Render thematic break: newpage | hrule | ignore)."""

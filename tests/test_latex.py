@@ -457,3 +457,67 @@ class TestHtmlRawBlockSkipped:
         rb = RawBlock(content="\\newcommand{\\myvec}{\\mathbf}", kind="latex")
         result = LaTeXRenderer().render(rb)
         assert "\\newcommand" in result
+
+
+# ── Task 8: Environment args as YAML sequence ─────────────────────────────────
+
+
+class TestEnvironmentArgs:
+    """Environment args as YAML list tests (环境参数列表测试)."""
+
+    def test_environment_args_list(self) -> None:
+        """Environment args as list renders {arg1} (环境列表参数渲染).
+
+        Tests that a single-element list arg produces one brace group.
+        (测试单元素列表参数生成一个花括号组。)
+        """
+        env = Environment(
+            name="subfigure",
+            children=[Paragraph(children=[Text(content="content")])],
+        )
+        env.metadata["args"] = [r"0.45\textwidth"]
+        result = render(env)
+        assert r"\begin{subfigure}{0.45\textwidth}" in result
+
+    def test_environment_args_multiple(self) -> None:
+        """Multiple args render as consecutive braces (多参数渲染为连续花括号).
+
+        Tests that a two-element list produces two consecutive brace groups.
+        (测试两元素列表生成两个连续花括号组。)
+        """
+        env = Environment(
+            name="myenv",
+            children=[Paragraph(children=[Text(content="text")])],
+        )
+        env.metadata["args"] = ["arg1", "arg2"]
+        result = render(env)
+        assert r"\begin{myenv}{arg1}{arg2}" in result
+
+    def test_environment_args_string_unchanged(self) -> None:
+        """String args still works as before (字符串参数不变).
+
+        Tests that a plain string arg is still wrapped in one brace group.
+        (测试普通字符串参数仍被包裹在一个花括号组中。)
+        """
+        env = Environment(
+            name="test",
+            children=[Paragraph(children=[Text(content="body")])],
+        )
+        env.metadata["args"] = "single"
+        result = render(env)
+        assert r"\begin{test}{single}" in result
+
+    def test_environment_options_and_args_combined(self) -> None:
+        """Options and args render together: [opt]{arg} (选项和参数组合渲染).
+
+        Tests that options come before list args in the header.
+        (测试选项在列表参数之前出现在头部。)
+        """
+        env = Environment(
+            name="minipage",
+            children=[Paragraph(children=[Text(content="text")])],
+        )
+        env.metadata["options"] = "c"
+        env.metadata["args"] = [r"0.5\textwidth"]
+        result = render(env)
+        assert r"\begin{minipage}[c]{0.5\textwidth}" in result
