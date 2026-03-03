@@ -25,6 +25,10 @@ from ruamel.yaml import YAML
 _yaml = YAML(typ="safe")
 _log = logging.getLogger(__name__)
 
+# Type constraints for fields that renderers cast (渲染器依赖的字段类型约束)
+_LIST_FIELDS = {"classoptions", "packages"}
+_DICT_FIELDS = {"package_options"}
+
 # Default config values matching PRD §10.2 (PRD §10.2 默认值)
 _DEFAULTS: dict[str, object] = {
     "target": "latex",
@@ -71,8 +75,8 @@ class MdMidConfig:
     bibliography: str = ""
     bibstyle: str = "plain"
     bibliography_mode: str = "auto"
-    code_style: str = "lstlisting"       # lstlisting | minted
-    thematic_break: str = "newpage"      # newpage | hrule | ignore
+    code_style: str = "lstlisting"  # lstlisting | minted
+    thematic_break: str = "newpage"  # newpage | hrule | ignore
     ref_tilde: bool = True
 
     # Document metadata populated by directives (文档元信息，由指令填充)
@@ -83,8 +87,8 @@ class MdMidConfig:
     preamble: str = ""
 
     # Markdown options (Markdown 选项)
-    heading_id_style: str = "attr"       # attr | html
-    locale: str = "zh"                   # zh | en
+    heading_id_style: str = "attr"  # attr | html
+    locale: str = "zh"  # zh | en
 
     # Runtime flags (运行时标志，非序列化)
     strict: bool = False
@@ -118,6 +122,19 @@ class MdMidConfig:
                 elif isinstance(value, dict):
                     value = dict(value)
                 kwargs[norm] = value
+        # Validate types for fields that renderers depend on (校验渲染器依赖的字段类型)
+        for key in _LIST_FIELDS:
+            if key in kwargs and not isinstance(kwargs[key], list):
+                raise TypeError(
+                    f"Config '{key}' must be a list, got {type(kwargs[key]).__name__}"
+                    f" (配置 '{key}' 必须为列表)"
+                )
+        for key in _DICT_FIELDS:
+            if key in kwargs and not isinstance(kwargs[key], dict):
+                raise TypeError(
+                    f"Config '{key}' must be a dict, got {type(kwargs[key]).__name__}"
+                    f" (配置 '{key}' 必须为字典)"
+                )
         return cls(**kwargs)  # type: ignore[arg-type]
 
 
