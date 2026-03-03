@@ -5,11 +5,13 @@ from __future__ import annotations
 from md_mid.html import HTMLRenderer
 from md_mid.nodes import (
     Blockquote,
+    Citation,
     CodeBlock,
     CodeInline,
     CrossRef,
     Document,
     Emphasis,
+    Figure,
     HardBreak,
     Heading,
     Link,
@@ -21,6 +23,7 @@ from md_mid.nodes import (
     RawBlock,
     SoftBreak,
     Strong,
+    Table,
     Text,
     ThematicBreak,
 )
@@ -254,3 +257,147 @@ class TestHtmlInline:
         p = Paragraph(children=[MathInline(content="x<script>alert(1)</script>y")])
         result = render(doc(p), mode="fragment")
         assert "<script>" not in result
+
+
+# ── Figures and tables ────────────────────────────────────────────────────────
+
+
+class TestHtmlFigure:
+    """Figure rendering with auto-numbering and AI details (图渲染测试)."""
+
+    def test_figure_auto_numbered(self) -> None:
+        """Two figures get sequential numbers (两图自动编号)."""
+        fig1 = Figure(src="a.png", alt="A", metadata={"caption": "First", "label": "fig:a"})
+        fig2 = Figure(src="b.png", alt="B", metadata={"caption": "Second", "label": "fig:b"})
+        result = render(doc(fig1, fig2))
+        # Check auto-numbering regardless of locale (检查自动编号，不限语言)
+        assert "图 1" in result or "Figure 1" in result
+        assert "图 2" in result or "Figure 2" in result
+
+    def test_figure_has_id_anchor(self) -> None:
+        """Figure label becomes id attribute (标签成为 id 属性)."""
+        fig = Figure(src="a.png", alt="A", metadata={"caption": "Cap", "label": "fig:test"})
+        result = render(doc(fig))
+        assert 'id="fig:test"' in result
+
+    def test_figure_ai_details(self) -> None:
+        """Figure with AI metadata shows details block (AI 信息折叠块)."""
+        fig = Figure(
+            src="a.png",
+            alt="A",
+            metadata={
+                "caption": "AI figure",
+                "ai": {"model": "dalle-3", "prompt": "blue sky"},
+            },
+        )
+        result = render(doc(fig))
+        assert "<details>" in result
+        assert "dalle-3" in result
+        assert "blue sky" in result
+
+    def test_figure_locale_en_label(self) -> None:
+        """English locale uses 'Figure N' prefix (英文标签前缀测试)."""
+        fig = Figure(src="a.png", alt="A", metadata={"caption": "Cap"})
+        result = HTMLRenderer(locale="en").render(doc(fig))
+        assert "Figure 1" in result
+
+    def test_figure_locale_zh_label(self) -> None:
+        """Chinese locale uses '图 N' prefix (中文标签前缀测试)."""
+        fig = Figure(src="a.png", alt="A", metadata={"caption": "Cap"})
+        result = HTMLRenderer(locale="zh").render(doc(fig))
+        assert "图 1" in result
+
+
+class TestHtmlLangAttribute:
+    """html lang respects locale setting (lang 属性随 locale 变化)."""
+
+    def test_html_lang_en(self) -> None:
+        """locale=en → lang='en' (英文模式 lang 属性)."""
+        result = HTMLRenderer(locale="en").render(doc(Paragraph(children=[Text(content="Hi")])))
+        assert 'lang="en"' in result
+
+    def test_html_lang_zh(self) -> None:
+        """locale=zh → lang='zh-CN' (中文模式 lang 属性)."""
+        result = HTMLRenderer(locale="zh").render(doc(Paragraph(children=[Text(content="Hi")])))
+        assert 'lang="zh-CN"' in result
+
+
+class TestHtmlTableAlignment:
+    """Table cell alignment respects column alignments (表格列对齐测试)."""
+
+    def test_table_center_aligned(self) -> None:
+        """Center-aligned column has text-align:center style (居中对齐样式)."""
+        tbl = Table(
+            headers=[[Text(content="H")]],
+            alignments=["center"],
+            rows=[[[Text(content="v")]]],
+        )
+        result = render(doc(tbl))
+        assert "text-align:center" in result
+
+
+class TestHtmlTable:
+    """Table rendering with auto-numbering (表渲染测试)."""
+
+    def test_table_auto_numbered(self) -> None:
+        """Table has auto-numbered caption (表格自动编号)."""
+        tbl = Table(
+            headers=[[Text(content="Col")]],
+            alignments=["left"],
+            rows=[[[Text(content="val")]]],
+            metadata={"caption": "My Table", "label": "tab:t1"},
+        )
+        result = render(doc(tbl))
+        # Check auto-numbering regardless of locale (检查自动编号，不限语言)
+        assert "表 1" in result or "Table 1" in result
+        assert "My Table" in result
+
+    def test_table_has_id(self) -> None:
+        """Table label becomes id attribute (表格标签成为 id 属性)."""
+        tbl = Table(
+            headers=[[Text(content="H")]],
+            alignments=["left"],
+            rows=[[[Text(content="v")]]],
+            metadata={"caption": "T", "label": "tab:x"},
+        )
+        result = render(doc(tbl))
+        assert 'id="tab:x"' in result
+
+
+# ── Cross-refs and citations ─────────────────────────────────────────────────
+
+
+class TestHtmlCrossRef:
+    """Cross-ref renders as anchor link (交叉引用渲染测试)."""
+
+    def test_cross_ref_link(self) -> None:
+        """Cross-ref → anchor link (交叉引用渲染为锚点链接)."""
+        cr = CrossRef(label="fig:test", display_text="Figure 1")
+        result = render(doc(Paragraph(children=[cr])))
+        assert 'href="#fig:test"' in result
+        assert "Figure 1" in result
+
+
+class TestHtmlCitation:
+    """Citations render as superscript numbered refs (文献引用渲染测试)."""
+
+    def test_citation_superscript(self) -> None:
+        """Citation renders as [N] superscript (引用渲染为上标编号)."""
+        cit = Citation(keys=["wang2024"])
+        result = render(doc(Paragraph(children=[cit])))
+        assert "[1]" in result
+        assert 'class="cite"' in result
+
+    def test_citation_bibliography_at_end(self) -> None:
+        """Citations produce bibliography section at end of body (引用产生末尾参考文献)."""
+        cit = Citation(keys=["smith2024"])
+        bib = {"smith2024": "Smith, 2024, Science"}
+        result = HTMLRenderer(bib=bib, mode="body").render(doc(Paragraph(children=[cit])))
+        assert "Smith, 2024, Science" in result
+        assert 'id="cite-smith2024"' in result
+
+    def test_citation_xss_safe(self) -> None:
+        """Citation key with special chars is HTML-escaped (引用 key 特殊字符转义)."""
+        cit = Citation(keys=["key<evil>"])
+        result = render(doc(Paragraph(children=[cit])))
+        assert "<evil>" not in result
