@@ -54,9 +54,9 @@ def _yaml_safe_scalar(val: str) -> str:
         Quoted string if needed, else val unchanged (需要时返回引号包裹的字符串)
     """
     # Characters that make a bare YAML scalar ambiguous (使裸标量产生歧义的字符)
-    UNSAFE = ('#', '[', '{', '!', '&', '*', '?', '|', '>', "'", '"')
-    if any(val.startswith(c) for c in UNSAFE) or ':' in val:
-        escaped = val.replace('\\', '\\\\').replace('"', '\\"')
+    UNSAFE = ("#", "[", "{", "!", "&", "*", "?", "|", ">", "'", '"')
+    if any(val.startswith(c) for c in UNSAFE) or ":" in val:
+        escaped = val.replace("\\", "\\\\").replace('"', '\\"')
         return f'"{escaped}"'
     return val
 
@@ -121,10 +121,11 @@ class MarkdownRenderer:
         Returns:
             Rich Markdown string (Rich Markdown 字符串)
         """
-        # 重置计数器 (Reset counters for fresh render)
+        # 重置计数器和状态 (Reset counters and state for fresh render)
         self._fig_count = 0
         self._tab_count = 0
         self._list_depth = 0
+        self._native_fn_defs = {}  # 清除上次渲染残留脚注 (Clear stale footnote defs)
 
         # Pass 1: 收集引用键 (Collect citation keys)
         self._index = self._build_index(doc)
@@ -183,8 +184,7 @@ class MarkdownRenderer:
                         column=int(start.get("column", 1)),
                     )
             self._diag.warning(
-                f"Unhandled node type '{node.type}',"
-                " rendering children only",
+                f"Unhandled node type '{node.type}', rendering children only",
                 pos,
             )
             return self._render_children(node)
@@ -240,10 +240,7 @@ class MarkdownRenderer:
         if label:
             if self._heading_id_style == "html":
                 # Escape id attribute and heading text content (转义 id 属性和标题文本内容)
-                return (
-                    f'<h{h.level} id="{_esc(label)}">'
-                    f"{_esc(text)}</h{h.level}>\n\n"
-                )
+                return f'<h{h.level} id="{_esc(label)}">{_esc(text)}</h{h.level}>\n\n'
             else:
                 # attr style: ## Heading {#id}
                 return f"{prefix} {text} {{#{label}}}\n\n"
@@ -307,9 +304,7 @@ class MarkdownRenderer:
     def _render_figure(self, node: Node) -> str:
         """Figure 节点渲染 (Figure node rendering)."""
         f = cast(Figure, node)
-        return self._render_figure_block(
-            f.src, f.alt, f.metadata
-        ) + "\n\n"
+        return self._render_figure_block(f.src, f.alt, f.metadata) + "\n\n"
 
     def _render_image(self, node: Node) -> str:
         """普通行内图片渲染 (Plain inline image rendering)."""
@@ -318,9 +313,7 @@ class MarkdownRenderer:
 
     def _render_image_as_figure(self, img: Image) -> str:
         """Image 节点 → HTML figure 块 (Image as HTML figure block)."""
-        return self._render_figure_block(
-            img.src, img.alt, img.metadata
-        )
+        return self._render_figure_block(img.src, img.alt, img.metadata)
 
     def _render_figure_block(
         self,
@@ -337,44 +330,29 @@ class MarkdownRenderer:
         id_attr = f' id="{_esc(label)}"' if label else ""
         lines: list[str] = [
             f"<figure{id_attr}>",
-            f'  <img src="{_esc(src)}" alt="{_esc(alt)}"'
-            ' style="max-width:100%">',
+            f'  <img src="{_esc(src)}" alt="{_esc(alt)}" style="max-width:100%">',
         ]
         fig_label = self._labels["figure"]
         if caption:
             lines.append(
-                f"  <figcaption><strong>{fig_label} {n}</strong>"
-                f": {_esc(caption)}</figcaption>"
+                f"  <figcaption><strong>{fig_label} {n}</strong>: {_esc(caption)}</figcaption>"
             )
         else:
-            lines.append(
-                f"  <figcaption><strong>{fig_label} {n}</strong>"
-                "</figcaption>"
-            )
+            lines.append(f"  <figcaption><strong>{fig_label} {n}</strong></figcaption>")
 
         # AI 信息折叠块 (AI info details block)
         ai = metadata.get("ai")
         if isinstance(ai, dict):
             lines.append("  <details>")
-            lines.append(
-                "    <summary>🎨 AI Generation Info</summary>"
-            )
+            lines.append("    <summary>🎨 AI Generation Info</summary>")
             if model := ai.get("model"):
-                lines.append(
-                    f"    <p><strong>Model</strong>: {_esc(str(model))}</p>"
-                )
+                lines.append(f"    <p><strong>Model</strong>: {_esc(str(model))}</p>")
             if prompt := ai.get("prompt"):
-                lines.append(
-                    f"    <p><strong>Prompt</strong>: {_esc(str(prompt))}</p>"
-                )
+                lines.append(f"    <p><strong>Prompt</strong>: {_esc(str(prompt))}</p>")
             if neg := ai.get("negative_prompt"):
-                lines.append(
-                    f"    <p><strong>Negative</strong>: {_esc(str(neg))}</p>"
-                )
+                lines.append(f"    <p><strong>Negative</strong>: {_esc(str(neg))}</p>")
             if params := ai.get("params"):
-                lines.append(
-                    f"    <p><strong>Params</strong>: {_esc(str(params))}</p>"
-                )
+                lines.append(f"    <p><strong>Params</strong>: {_esc(str(params))}</p>")
             lines.append("  </details>")
 
         lines.append("</figure>")
@@ -391,17 +369,13 @@ class MarkdownRenderer:
         id_attr = f' id="{_esc(label)}"' if label else ""
 
         # 表头 (Table headers) — render inline nodes as HTML
-        th_cells = "".join(
-            f"<th>{self._render_cell_html(h)}</th>" for h in t.headers
-        )
+        th_cells = "".join(f"<th>{self._render_cell_html(h)}</th>" for h in t.headers)
         header_row = f"      <tr>{th_cells}</tr>"
 
         # 数据行 (Data rows) — render inline nodes as HTML
         data_rows: list[str] = []
         for row in t.rows:
-            td_cells = "".join(
-                f"<td>{self._render_cell_html(cell)}</td>" for cell in row
-            )
+            td_cells = "".join(f"<td>{self._render_cell_html(cell)}</td>" for cell in row)
             data_rows.append(f"      <tr>{td_cells}</tr>")
 
         lines: list[str] = [
@@ -418,14 +392,10 @@ class MarkdownRenderer:
         tab_label = self._labels["table"]
         if caption:
             lines.append(
-                f"  <figcaption><strong>{tab_label} {n}</strong>"
-                f": {_esc(caption)}</figcaption>"
+                f"  <figcaption><strong>{tab_label} {n}</strong>: {_esc(caption)}</figcaption>"
             )
         else:
-            lines.append(
-                f"  <figcaption><strong>{tab_label} {n}</strong>"
-                "</figcaption>"
-            )
+            lines.append(f"  <figcaption><strong>{tab_label} {n}</strong></figcaption>")
         lines.append("</figure>")
         return "\n".join(lines) + "\n\n"
 
