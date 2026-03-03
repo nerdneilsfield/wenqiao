@@ -135,6 +135,16 @@ class MdMidConfig:
                     f"Config '{key}' must be a dict, got {type(kwargs[key]).__name__}"
                     f" (配置 '{key}' 必须为字典)"
                 )
+        # Validate list element types — renderers assume str elements (校验列表元素类型)
+        for key in _LIST_FIELDS:
+            val = kwargs.get(key)
+            if isinstance(val, list):
+                for i, elem in enumerate(val):
+                    if not isinstance(elem, str):
+                        raise TypeError(
+                            f"Config '{key}[{i}]' must be str, got {type(elem).__name__}"
+                            f" (配置 '{key}[{i}]' 必须为字符串)"
+                        )
         return cls(**kwargs)  # type: ignore[arg-type]
 
 
