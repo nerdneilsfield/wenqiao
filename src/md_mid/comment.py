@@ -16,10 +16,10 @@ from typing import cast
 
 from ruamel.yaml import YAML
 
+from md_mid.comment_env import _process_environments
 from md_mid.diagnostic import DiagCollector, Position
 from md_mid.nodes import (
     Document,
-    Environment,
     Image,
     MathBlock,
     Node,
@@ -100,12 +100,18 @@ def process_comments(
     if diag is None:
         diag = DiagCollector(filename)
 
-    # Resolve source directory for include-tex path resolution (解析源目录用于 include-tex 路径解析)
-    source_dir = Path(filename).parent if filename != "<stdin>" else Path(".")
-
     _collect_document_directives(doc, diag)
     _process_environments(doc, diag)
-    _process_includes(doc.children, source_dir, diag)  # Phase 2.5: include-tex (引入处理)
+
+    # Phase 2.5: include-tex — only for file-based sources (仅对文件源执行 include-tex)
+    # Block include-tex for non-file sources to prevent local file inclusion
+    # from untrusted Markdown in API/service contexts.
+    # (阻止非文件源的 include-tex 以防止服务场景下的本地文件包含风险。)
+    _is_file_source = filename not in ("<stdin>", "<string>")
+    if _is_file_source:
+        source_dir = Path(filename).parent
+        _process_includes(doc.children, source_dir, diag)
+
     _process_attachments(doc, diag)
 
     return doc
@@ -217,168 +223,6 @@ def _collect_document_directives(doc: Document, diag: DiagCollector) -> None:
     # 逆序删除已消费的注释节点（Remove consumed comment nodes in reverse order）
     for i in reversed(to_remove):
         doc.children.pop(i)
-
-
-def _process_environments(doc: Document, diag: DiagCollector) -> None:
-    """Phase 2: 处理 begin/end 对，将中间节点包裹为 Environment 或 RawBlock。
-
-    Phase 2: Process begin/end pairs, wrapping inner nodes as Environment or RawBlock.
-    """
-    _process_environments_in(doc.children, diag)
-
-
-def _process_environments_in(children: list[Node], diag: DiagCollector) -> None:
-    """在一个子节点列表中查找并处理 begin/end 对。
-
-    Find and process begin/end pairs in a children list.
-    Pre-scans for end directives to avoid O(n²) on orphan begins
-    (预扫描 end 指令，避免孤立 begin 导致 O(n²) 扫描).
-    """
-    # Pre-scan: collect env names that have end directives (预扫描有 end 指令的环境名)
-    names_with_ends: set[str] = set()
-    for child in children:
-        parsed = _parse_comment(child)
-        if parsed is not None and parsed[0] == "end":
-            names_with_ends.add(str(parsed[1]).strip())
-
-    i = 0
-    while i < len(children):
-        child = children[i]
-        parsed = _parse_comment(child)
-        if parsed is not None:
-            key, value = parsed
-            if key == "begin":
-                env_name = str(value).strip()
-                # Fast-reject orphan begins without scanning (快速排除无匹配 end 的孤立 begin)
-                if env_name not in names_with_ends:
-                    diag.error(
-                        f"Unmatched <!-- begin: {env_name} -->",
-                        _pos_from_node(child),
-                    )
-                    i += 1
-                    continue
-                end_idx = _find_matching_end(children, i + 1, env_name)
-                if end_idx is None:
-                    diag.error(
-                        f"Unmatched <!-- begin: {env_name} -->",
-                        _pos_from_node(child),
-                    )
-                    i += 1
-                    continue
-
-                # 提取 begin 和 end 之间的节点（Extract nodes between begin and end）
-                inner = children[i + 1 : end_idx]
-
-                # 替换为 Environment 或 RawBlock（Replace with Environment or RawBlock）
-                if env_name == "raw":
-                    # raw 环境：合并内容为纯文本（raw environment: merge content as plain text）
-                    content = _extract_raw_content(inner)
-                    new_node: Node = RawBlock(content=content, position=child.position)
-                else:
-                    env_node = Environment(
-                        name=env_name,
-                        children=inner,
-                        position=child.position,
-                    )
-                    # 收集环境级指令（Collect environment-level directives into metadata）
-                    _collect_env_directives(env_node, diag)
-                    new_node = env_node
-
-                # 替换 children[i:end_idx+1] 为 new_node（Replace slice with new_node）
-                children[i : end_idx + 1] = [new_node]
-                # 不递增 i，因为可能有嵌套（Don't increment i, may have nesting）
-                continue
-
-            elif key == "end":
-                # 孤立的 end 指令（Orphan end directive without matching begin）
-                env_name = str(value).strip()
-                diag.error(
-                    f"Orphan <!-- end: {env_name} --> without matching begin",
-                    _pos_from_node(child),
-                )
-                i += 1
-                continue
-
-        # 递归处理子节点（Recursively process child nodes）
-        if hasattr(child, "children") and child.children:
-            _process_environments_in(child.children, diag)
-
-        i += 1
-
-
-def _collect_env_directives(env: Environment, diag: DiagCollector) -> None:
-    """收集环境节点开头的环境级指令，移入 environment.metadata。
-
-    Collect leading environment-level directives from env.children into env.metadata.
-    遇到非指令节点时停止（Stops at first non-directive node）.
-    """
-    to_remove: list[int] = []
-    for i, child in enumerate(env.children):
-        parsed = _parse_comment(child)
-        if parsed is None:
-            # 遇到非指令节点，停止收集（Non-directive node stops collection）
-            break
-
-        key, value = parsed
-        if key not in ENV_DIRECTIVES:
-            # 非环境级指令，停止收集（Non-env-level directive stops collection）
-            break
-
-        nkey = _normalize_key(key)
-        env.metadata[nkey] = value
-        to_remove.append(i)
-
-    for i in reversed(to_remove):
-        env.children.pop(i)
-
-
-def _find_matching_end(children: list[Node], start: int, env_name: str) -> int | None:
-    """查找匹配的 <!-- end: env_name -->，支持嵌套同名环境。
-
-    Find matching end directive with nesting support (嵌套感知的结束指令查找).
-    使用深度计数器正确处理同名嵌套（Uses depth counter for same-name nesting）.
-    """
-    depth = 1  # 当前嵌套深度（Current nesting depth）
-    for j in range(start, len(children)):
-        parsed = _parse_comment(children[j])
-        if parsed is None:
-            continue
-        key, value = parsed
-        if key == "begin" and str(value).strip() == env_name:
-            depth += 1
-        elif key == "end" and str(value).strip() == env_name:
-            depth -= 1
-            if depth == 0:
-                return j
-    return None
-
-
-def _extract_raw_content(nodes: list[Node]) -> str:
-    """从节点列表中提取原始文本内容（Extract raw text content from node list）."""
-    parts: list[str] = []
-    for node in nodes:
-        if isinstance(node, RawBlock):
-            parts.append(node.content)
-        elif isinstance(node, Paragraph):
-            parts.append(_text_from_paragraph(node))
-        elif hasattr(node, "content"):
-            parts.append(node.content)
-        elif hasattr(node, "children"):
-            parts.append(_extract_raw_content(node.children))
-    return "\n".join(parts)
-
-
-def _text_from_paragraph(para: Paragraph) -> str:
-    """从段落中提取文本内容（Extract text content from paragraph）."""
-    parts: list[str] = []
-    for child in para.children:
-        if hasattr(child, "content"):
-            parts.append(child.content)
-        elif hasattr(child, "children"):
-            for sub in child.children:
-                if hasattr(sub, "content"):
-                    parts.append(sub.content)
-    return "".join(parts)
 
 
 def _process_includes(
