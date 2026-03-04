@@ -358,9 +358,19 @@ class LaTeXRenderer:
             lines.append(f"  % Params: {pairs}")
         return lines
 
-    def render_figure(self, node: Node) -> str:
-        fig = cast(Figure, node)
-        meta = node.metadata
+    def _render_figure_env(self, src: str, meta: dict[str, object]) -> str:
+        """Build \\begin{figure}...\\end{figure} block (构建 figure 环境块).
+
+        Shared by render_figure and render_image promote path
+        (render_figure 和 render_image 升级路径共用).
+
+        Args:
+            src: Image source path (图片源路径)
+            meta: Node metadata dict (节点元数据字典)
+
+        Returns:
+            LaTeX figure environment string (LaTeX figure 环境字符串)
+        """
         placement = str(meta.get("placement", "htbp"))
         width = str(meta.get("width", ""))
         caption = str(meta.get("caption", ""))
@@ -371,9 +381,9 @@ class LaTeXRenderer:
 
         gfx_opts = f"width={width}" if width else ""
         if gfx_opts:
-            lines.append(f"\\includegraphics[{gfx_opts}]{{{fig.src}}}")
+            lines.append(f"\\includegraphics[{gfx_opts}]{{{src}}}")
         else:
-            lines.append(f"\\includegraphics{{{fig.src}}}")
+            lines.append(f"\\includegraphics{{{src}}}")
 
         if caption:
             lines.append(f"\\caption{{{caption}}}")
@@ -386,36 +396,17 @@ class LaTeXRenderer:
         lines.append("\\end{figure}")
         return "\n".join(lines) + "\n"
 
+    def render_figure(self, node: Node) -> str:
+        fig = cast(Figure, node)
+        return self._render_figure_env(fig.src, node.metadata)
+
     def render_image(self, node: Node) -> str:
         # Image without figure wrapping — if metadata has caption/label,
         # promote to figure-like rendering (有 caption/label 时升级为 figure 环境)
         img = cast(Image, node)
         meta = node.metadata
         if meta.get("caption") or meta.get("label"):
-            placement = str(meta.get("placement", "htbp"))
-            width = str(meta.get("width", ""))
-            caption = str(meta.get("caption", ""))
-            label = str(meta.get("label", ""))
-
-            lines = [f"\\begin{{figure}}[{placement}]"]
-            lines.append("\\centering")
-
-            gfx_opts = f"width={width}" if width else ""
-            if gfx_opts:
-                lines.append(f"\\includegraphics[{gfx_opts}]{{{img.src}}}")
-            else:
-                lines.append(f"\\includegraphics{{{img.src}}}")
-
-            if caption:
-                lines.append(f"\\caption{{{caption}}}")
-            if label:
-                lines.append(f"\\label{{{label}}}")
-
-            # AI metadata comments before closing figure (AI 元数据注释在关闭图环境之前)
-            lines.extend(self._render_ai_comments(meta.get("ai")))
-
-            lines.append("\\end{figure}")
-            return "\n".join(lines) + "\n"
+            return self._render_figure_env(img.src, meta)
 
         return f"\\includegraphics{{{img.src}}}"
 
