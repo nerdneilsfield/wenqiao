@@ -38,3 +38,9 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 -
+.DS_Store
+__pycache__/
+.claude/review-loop.log
+reviews/
+*.pyc
+src/md_mid/__pycache__/__init__.cpython-314.pyc
