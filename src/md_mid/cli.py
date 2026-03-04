@@ -156,12 +156,16 @@ def main(
     cfg_dict = load_config_file(config_path) if config_path else None
 
     # 解析最终配置 (Resolve final config)
-    cfg = resolve_config(
-        cli_overrides=cli_dict if cli_dict else None,
-        east_meta=east.metadata,
-        config_dict=cfg_dict,
-        template_dict=tpl_dict,
-    )
+    try:
+        cfg = resolve_config(
+            cli_overrides=cli_dict if cli_dict else None,
+            east_meta=east.metadata,
+            config_dict=cfg_dict,
+            template_dict=tpl_dict,
+        )
+    except TypeError as e:
+        click.echo(f"Configuration error: {e}", err=True)
+        raise SystemExit(1)
 
     # Effective target: CLI > config > default (有效输出目标：CLI > 配置 > 默认 latex)
     effective_target: str = target if target is not None else cfg.target
