@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/Python-≥3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-474%20passed-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-479%20passed-brightgreen)](tests/)
 [![mypy](https://img.shields.io/badge/type%20check-mypy%20strict-blue)](https://mypy-lang.org/)
 [![Ruff](https://img.shields.io/badge/linter-ruff-261230?logo=ruff)](https://docs.astral.sh/ruff/)
 [![uv](https://img.shields.io/badge/pkg-uv-DE5FE9?logo=uv)](https://docs.astral.sh/uv/)
@@ -169,7 +169,6 @@ Options:
   --heading-id-style [attr|html]      Heading anchor format
   --locale [zh|en]                    Label language (default: zh)
   --generate-figures                  Enable AI figure generation
-  --figures-runner PATH               Figure generation runner script
   --figures-config PATH               Runner config (TOML)
   --force-regenerate                  Re-generate existing images
   --strict                            Strict parsing mode
@@ -671,7 +670,6 @@ Use `--generate-figures` to automatically generate images from prompts:
 ```bash
 md-mid paper.mid.md -o paper.tex \
   --generate-figures \
-  --figures-runner ./runner.py \
   --figures-config api.toml
 ```
 
@@ -831,8 +829,8 @@ extra-preamble: |
 | `bibliography_mode` | `str` | `"auto"` | Bibliography output strategy |
 | `heading_id_style` | `str` | `"attr"` | Heading anchor format |
 | `extra-preamble` | `str` | `""` | Raw LaTeX for preamble |
-| `thematic_break_style` | `str` | `"newpage"` | `newpage` / `hrule` / `ignore` |
-| `tilde_ref` | `bool` | `true` | Use `~\ref` instead of `\ref` |
+| `thematic_break` | `str` | `"newpage"` | `newpage` / `hrule` / `ignore` |
+| `ref_tilde` | `bool` | `true` | Use `~\ref` instead of `\ref` |
 
 </details>
 
@@ -879,7 +877,7 @@ academic-md2latex/
 │   ├── url_check.py         #   URL safety validation
 │   ├── ai_meta.py           #   Shared AI metadata rendering
 │   └── diagnostic.py        #   Error/warning diagnostics
-├── tests/                   # Test suite (17 files, 474 tests)
+├── tests/                   # Test suite (17 files, 479 tests)
 │   ├── fixtures/            #   Test .mid.md documents
 │   └── conftest.py          #   Shared pytest fixtures
 ├── templates/               # LaTeX venue templates (ieee.yaml, ...)
@@ -962,7 +960,7 @@ def render_figure(self, node: Node) -> str:
 Tests mirror source modules one-to-one (`parser.py` → `test_parser.py`).
 
 ```bash
-make test                    # Run all 474 tests
+make test                    # Run all 479 tests
 ```
 
 | Test file | Covers |
