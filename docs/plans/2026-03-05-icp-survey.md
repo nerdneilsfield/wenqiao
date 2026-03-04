@@ -226,7 +226,9 @@ git commit -m "feat: add all ICP survey BibTeX entries from drflow"
 
 Each task writes one file to `examples/icp-survey/`. Fragments are **bare content** — no `<!-- documentclass -->` header (that goes in the final merge). Each fragment starts directly with `## N. Chapter Title`.
 
-Figure image files go to `examples/images/`. Use `ai-generated: true` with detailed prompts. All citations in Markdown body text use `[Author Year](cite:key)` syntax. Inside `<!-- begin: raw -->...<!-- end: raw -->` LaTeX blocks, use `\cite{key}` as required — raw blocks are passed verbatim to LaTeX and are the only exception.
+Figure image files go to `examples/images/`. Mark each figure with `<!-- ai-generated: true -->` and write the `<!-- ai-prompt: ... -->` at execution time based on the surrounding content — **do not pre-write prompts in this plan**. Prompt style rule: English only; any Chinese labels that should appear on the figure go in `""`, e.g. `"算法"`.
+
+All citations in Markdown body text use `[Author Year](cite:key)` syntax. Inside `<!-- begin: raw -->...<!-- end: raw -->` LaTeX blocks, use `\cite{key}` as required — raw blocks are passed verbatim to LaTeX and are the only exception.
 
 ### Figure inventory (reference for all chapter agents)
 
@@ -275,15 +277,7 @@ Figure image files go to `examples/images/`. Use `ai-generated: true` with detai
 <!-- label: fig:timeline -->
 <!-- width: \textwidth -->
 <!-- ai-generated: true -->
-<!-- ai-prompt: |
-  Academic timeline diagram on white background. Horizontal time axis
-  from 1992 to 2025. Major milestones as labeled nodes above/below the
-  axis: 1992 Besl-McKay ICP, 1992 Chen-Medioni P2Plane, 2002 TrICP,
-  2015 Pomerleau survey, 2016 FGR, 2019 DCP/DeepICP, 2020 RPM-Net/QuickNN,
-  2021 NDT-FPGA, 2024 Tartan, 2025 HA-BFNN/PICK/NAR-ICP. Three colored
-  tracks: Algorithm (blue), DL (green), Hardware (orange). Clean sans-serif
-  font, minimal gridlines.
--->
+<!-- ai-prompt: | [write at execution time] -->
 
 [Structure paragraph: one sentence per chapter]
 ```
@@ -332,18 +326,6 @@ T^* = \arg\min_{R,\,t}
       \sum_{i=1}^{n} \bigl[(R\,p_i + t - q_{\sigma(i)}) \cdot \hat{n}_i\bigr]^2
 $$
 <!-- label: eq:p2plane-objective -->
-```
-
-**Figure prompt for `fig:icp-pipeline`:**
-
-```
-Flowchart of classic ICP algorithm. Four rectangular boxes connected
-by arrows in a vertical loop: (1) Initialize T=I, (2) Find nearest
-neighbors q_i = NN(R*p_i+t), (3) Estimate transform via SVD,
-(4) Check convergence ||ΔT|| < ε. Arrow from box 4 loops back to box 2
-labeled "not converged". Arrow from box 4 exits right labeled
-"converged → output T". White background, blue boxes, gray arrows,
-monospace math labels.
 ```
 
 **Step 1:** Write the fragment. Theorem block:
@@ -511,21 +493,6 @@ FPGA-PointNet \cite{fpgapointnet2025} & FPGA & DL feature & Registration & -- & 
 
 - §5.3.3 BFNN vs KD-Tree on FPGA: regularity advantage vs search efficiency trade-off
 
-**Figure prompt for `fig:fpga-pipeline`** (place in §5.3.1):
-
-```
-fig:fpga-pipeline:
-Block diagram of FPGA streaming pipeline for ICP. Left-to-right data flow:
-"Point Cloud Input" → "Voxel Downsample" → "Ping-Pong BRAM Buffer" →
-"KNN Search Engine (N parallel distance units)" → "Top-K Selection" →
-"SVD Transform Estimator" → "Convergence Check" → "Output Pose T".
-Each stage is a labeled rectangle. Directional arrows show data flow.
-A feedback arrow loops from "Convergence Check" back to "BRAM Buffer"
-labeled "not converged / iterate". Annotations: BRAM capacity on buffer,
-frequency annotation on KNN engine. White background, blue blocks,
-gray arrows, monospace math labels for math symbols.
-```
-
 **§5.4 Custom Processors**
 - Tigris (MICRO 2019): parallel KD-Tree traversal engine, reported 2.9× energy efficiency vs GPU
 - Tartan (ISCA 2024): memory-bandwidth analysis for ICP, roofline model positioning
@@ -537,32 +504,10 @@ gray arrows, monospace math labels for math symbols.
 - Limitation: fixed function — cannot run general ICP pipeline
 
 **§5.5 SW/HW Co-design**
-- Figure: `fig:hw-comparison` (bar chart, ai-generated)
-- Figure: `fig:codesign-space` (Pareto scatter, ai-generated)
+- Figure: `fig:hw-comparison` (grouped bar chart: latency + power per platform)
+- Figure: `fig:codesign-space` (2D scatter: latency vs power, Pareto frontier)
 - Quantization error propagation: 1-paragraph mathematical argument (INT16 → ~0.002° rotation error)
 - Final comparison table (5-row, from outline) with `<!-- caption -->` and `<!-- label -->`
-
-**Figure prompts:**
-
-`fig:hw-comparison`:
-```
-Grouped bar chart comparing CPU, GPU, FPGA, ASIC, and PIM for ICP
-acceleration. X-axis: five platforms. Two bar groups per platform:
-Latency (ms, blue) and Power (W, orange). Approximate values:
-CPU 500ms/30W, GPU 50ms/150W, FPGA 20ms/5W, ASIC 5ms/2W, PIM 2ms/1W.
-White background, clean academic style, legend top right,
-y-axis dual-scale or normalized.
-```
-
-`fig:codesign-space`:
-```
-2D scatter plot. X-axis: Latency (ms, log scale 1–1000).
-Y-axis: Power (W, log scale 0.5–200). Points labeled:
-CPU (500ms, 30W), GPU (50ms, 150W), FPGA (20ms, 5W),
-Tigris (8ms, 3W), Tartan (10ms, 4W), PICK (2ms, 1W).
-Pareto frontier drawn as dashed curve. Blue points = real systems.
-White background, academic style.
-```
 
 **§5.6 Chapter Summary**
 - 3-paragraph comparative summary: GPU vs FPGA vs custom, open research questions
