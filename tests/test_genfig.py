@@ -3,10 +3,41 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock
 
-from md_mid.genfig import FigureJob, collect_jobs, generate_figure_job
+import pytest
+
+from md_mid.genfig import FigureJob, FigureRunner, collect_jobs, generate_figure_job
 from md_mid.nodes import Document, Figure, Image, Paragraph
+
+# ── MockRunner (测试用 FigureRunner 子类) ─────────────────────────────────────
+
+
+class MockRunner(FigureRunner):
+    """Test FigureRunner that records calls (记录调用的测试 runner)."""
+
+    def __init__(self, success: bool = True, write_file: bool = True) -> None:
+        self.success = success
+        self.write_file = write_file
+        self.calls: list[FigureJob] = []
+
+    def generate(self, job: FigureJob) -> bool:
+        """Record call and optionally write fake output (记录调用并可选写入假输出)."""
+        self.calls.append(job)
+        if self.write_file:
+            job.output_path.parent.mkdir(parents=True, exist_ok=True)
+            job.output_path.write_bytes(b"fake image")
+        return self.success
+
+
+class RaisingRunner(FigureRunner):
+    """Runner that raises on generate (生成时抛异常的 runner)."""
+
+    def generate(self, job: FigureJob) -> bool:
+        """Always raise RuntimeError (总是抛出 RuntimeError)."""
+        raise RuntimeError("network error")
+
+
+# ── helpers (辅助函数) ────────────────────────────────────────────────────────
 
 
 def _fig(src: str, ai: dict | None = None) -> Figure:
@@ -20,6 +51,23 @@ def _fig(src: str, ai: dict | None = None) -> Figure:
 def _img_with_ai(src: str, ai: dict) -> Image:
     """Build an Image with AI metadata (构建含 AI 元数据的 Image 节点)."""
     return Image(src=src, alt="alt", metadata={"ai": ai})
+
+
+# ── FigureRunner ABC ──────────────────────────────────────────────────────────
+
+
+class TestFigureRunnerABC:
+    """FigureRunner ABC enforcement (FigureRunner ABC 强制测试)."""
+
+    def test_runner_abc_enforced(self) -> None:
+        """Cannot instantiate FigureRunner directly (不能直接实例化 FigureRunner)."""
+        with pytest.raises(TypeError):
+            FigureRunner()  # type: ignore[abstract]
+
+    def test_mock_runner_is_figure_runner(self) -> None:
+        """MockRunner is a FigureRunner subclass (MockRunner 是 FigureRunner 子类)."""
+        runner = MockRunner()
+        assert isinstance(runner, FigureRunner)
 
 
 # ── collect_jobs ──────────────────────────────────────────────────────────────
@@ -129,19 +177,14 @@ class TestGenerateFigureJob:
             model=None,
             params=None,
         )
-        mock_runner = MagicMock()
-        mock_runner.generate_image.return_value = 0
-        # Simulate successful output (模拟成功输出)
-        (tmp_path / "out.png").write_bytes(b"img")
-
-        ok = generate_figure_job(job, runner=mock_runner, config=None)
+        runner = MockRunner()
+        ok = generate_figure_job(job, runner=runner)
         assert ok is True
-        mock_runner.generate_image.assert_called_once()
-        call_kwargs = mock_runner.generate_image.call_args.kwargs
-        assert call_kwargs["prompt"] == "blue sky"
+        assert len(runner.calls) == 1
+        assert runner.calls[0].prompt == "blue sky"
 
     def test_runner_failure_returns_false(self, tmp_path: Path) -> None:
-        """Runner returning non-zero means failure (runner 返回非零表示失败)."""
+        """Runner returning False means failure (runner 返回 False 表示失败)."""
         job = FigureJob(
             src="out.png",
             output_path=tmp_path / "out.png",
@@ -149,14 +192,12 @@ class TestGenerateFigureJob:
             model=None,
             params=None,
         )
-        mock_runner = MagicMock()
-        mock_runner.generate_image.return_value = 1  # failure (失败返回码)
-
-        ok = generate_figure_job(job, runner=mock_runner, config=None)
+        runner = MockRunner(success=False, write_file=False)
+        ok = generate_figure_job(job, runner=runner)
         assert ok is False
 
     def test_missing_output_returns_false(self, tmp_path: Path) -> None:
-        """Runner returning 0 but no output file means failure (无输出文件视为失败)."""
+        """Runner returning True but no output file means failure (无输出文件视为失败)."""
         job = FigureJob(
             src="out.png",
             output_path=tmp_path / "out.png",
@@ -164,11 +205,11 @@ class TestGenerateFigureJob:
             model=None,
             params=None,
         )
-        mock_runner = MagicMock()
-        mock_runner.generate_image.return_value = 0  # claims success (声称成功)
-        # But output file is NOT created (但未创建输出文件)
-
-        ok = generate_figure_job(job, runner=mock_runner, config=None)
+        # Runner returns True but doesn't write file (返回 True 但不写文件)
+        runner = MockRunner(success=True, write_file=False)
+        ok = generate_figure_job(job, runner=runner)
+        # Post-condition: no file on disk means failure despite runner returning True
+        # (后置条件：文件不存在则视为失败)
         assert ok is False
 
     def test_runner_exception_returns_false(self, tmp_path: Path) -> None:
@@ -180,14 +221,12 @@ class TestGenerateFigureJob:
             model=None,
             params=None,
         )
-        mock_runner = MagicMock()
-        mock_runner.generate_image.side_effect = RuntimeError("network error")
-
-        ok = generate_figure_job(job, runner=mock_runner, config=None)
+        runner = RaisingRunner()
+        ok = generate_figure_job(job, runner=runner)
         assert ok is False
 
     def test_directory_not_counted_as_success(self, tmp_path: Path) -> None:
-        """Runner returning 0 but output_path is directory -> False (输出路径为目录视为失败)."""
+        """Runner returning False for directory path (目录路径返回 False)."""
         sub = tmp_path / "out_dir"
         sub.mkdir()
         job = FigureJob(
@@ -197,13 +236,12 @@ class TestGenerateFigureJob:
             model=None,
             params=None,
         )
-        mock_runner = MagicMock()
-        mock_runner.generate_image.return_value = 0
-        ok = generate_figure_job(job, runner=mock_runner, config=None)
+        runner = MockRunner(success=False, write_file=False)
+        ok = generate_figure_job(job, runner=runner)
         assert ok is False
 
-    def test_size_forwarded_from_params(self, tmp_path: Path) -> None:
-        """Size param is forwarded to runner (size 参数转发给 runner)."""
+    def test_job_passed_to_runner(self, tmp_path: Path) -> None:
+        """Full job object is passed to runner.generate (完整作业传递给 runner)."""
         job = FigureJob(
             src="out.png",
             output_path=tmp_path / "out.png",
@@ -211,11 +249,8 @@ class TestGenerateFigureJob:
             model="dalle-3",
             params={"size": "1024x1024"},
         )
-        mock_runner = MagicMock()
-        mock_runner.generate_image.return_value = 0
-        (tmp_path / "out.png").write_bytes(b"img")
-
-        generate_figure_job(job, runner=mock_runner, config=None)
-        call_kwargs = mock_runner.generate_image.call_args.kwargs
-        assert call_kwargs["size"] == "1024x1024"
-        assert call_kwargs["model"] == "dalle-3"
+        runner = MockRunner()
+        generate_figure_job(job, runner=runner)
+        assert runner.calls[0] is job
+        assert runner.calls[0].model == "dalle-3"
+        assert runner.calls[0].params == {"size": "1024x1024"}

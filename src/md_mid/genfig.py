@@ -2,13 +2,13 @@
 
 可选 AI 图片生成辅助模块。
 Walks the EAST for Figure/Image nodes with ai-generated: true and calls
-the nanobanana-compatible runner to generate them.
+a FigureRunner implementation to generate them.
 """
 
 from __future__ import annotations
 
-import importlib.util
-from collections.abc import Iterator
+from abc import ABC, abstractmethod
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -106,37 +106,29 @@ def collect_jobs(
     return jobs
 
 
-def _load_runner(runner_path: Path) -> Any:
-    """Dynamically load the nanobanana-compatible runner module.
+class FigureRunner(ABC):
+    """Base class for figure generation runners (图片生成 runner 基类).
 
-    动态加载 nanobanana 兼容的 runner 模块。
-
-    SECURITY WARNING / 安全警告:
-        This function executes arbitrary Python code from the specified file.
-        Only use runner scripts from trusted sources.
-        此函数执行指定文件中的任意 Python 代码，仅使用受信任的 runner 脚本。
-
-    Args:
-        runner_path: Path to the runner Python script (runner 脚本路径)
-
-    Returns:
-        Loaded module with generate_image callable (含 generate_image 的已加载模块)
-
-    Raises:
-        ImportError: If runner cannot be loaded (runner 无法加载时)
+    Subclass and implement generate() to provide custom image generation.
+    (子类化并实现 generate() 以提供自定义图片生成。)
     """
-    spec = importlib.util.spec_from_file_location("genfig_runner", str(runner_path))
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Cannot load runner: {runner_path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+
+    @abstractmethod
+    def generate(self, job: FigureJob) -> bool:
+        """Generate a single figure (生成单张图片).
+
+        Args:
+            job: Figure generation job (图片生成作业)
+
+        Returns:
+            True if generation succeeded and output file exists (成功返回 True)
+        """
+        ...
 
 
 def generate_figure_job(
     job: FigureJob,
-    runner: Any,
-    config: Path | None,
+    runner: FigureRunner,
 ) -> bool:
     """Generate a single figure by calling the runner.
 
@@ -144,42 +136,26 @@ def generate_figure_job(
 
     Args:
         job: Figure job to execute (待执行的图片作业)
-        runner: Loaded runner module with generate_image (含 generate_image 的 runner 模块)
-        config: Path to TOML config for runner (runner 的 TOML 配置路径，可选)
+        runner: FigureRunner implementation (FigureRunner 实现)
 
     Returns:
         True if generation succeeded and output file exists (成功生成且输出文件存在则返回 True)
     """
     job.output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Build runner kwargs; pass extra params if available (构建 runner 参数)
-    kwargs: dict[str, str | None] = {
-        "prompt": job.prompt,
-        "output": str(job.output_path),
-        "config": str(config) if config else None,
-        "model": job.model,
-    }
-    # Forward size from params if present (转发 size 参数)
-    if job.params and "size" in job.params:
-        kwargs["size"] = str(job.params["size"])
-
     try:
-        returncode: int = runner.generate_image(**kwargs)
+        ok = runner.generate(job)
     except Exception:
         return False
-
-    if returncode != 0:
-        return False
-    return job.output_path.is_file()
+    # Post-condition: file must exist on disk (后置条件：文件必须存在)
+    return ok and job.output_path.is_file()
 
 
 def run_generate_figures(
     doc: Document,
     base_dir: Path,
-    runner_path: Path,
-    config: Path | None = None,
+    runner: FigureRunner,
     force: bool = False,
-    echo: Any = None,
+    echo: Callable[[str], object] | None = None,
 ) -> tuple[int, int]:
     """Run the generate-figures pipeline on a document.
 
@@ -188,8 +164,7 @@ def run_generate_figures(
     Args:
         doc: EAST document (EAST 文档)
         base_dir: Base directory for image paths (图片路径基目录)
-        runner_path: Path to nanobanana-compatible runner (runner 脚本路径)
-        config: Optional TOML config for the runner (可选的 runner TOML 配置)
+        runner: FigureRunner implementation (FigureRunner 实现)
         force: Regenerate even if file exists (强制重新生成)
         echo: Optional callable for progress output, e.g. click.echo (进度输出函数，可选)
 
@@ -202,11 +177,10 @@ def run_generate_figures(
             echo("[generate-figures] No AI figures to generate (无待生成的 AI 图片).")
         return (0, 0)
 
-    runner = _load_runner(runner_path)
     success = 0
     fail = 0
     for job in jobs:
-        ok = generate_figure_job(job, runner=runner, config=config)
+        ok = generate_figure_job(job, runner=runner)
         if ok:
             success += 1
             if echo:
