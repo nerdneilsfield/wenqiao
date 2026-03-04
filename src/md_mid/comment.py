@@ -439,6 +439,9 @@ def _process_includes(
                 children[i] = RawBlock(content=content, position=child.position)
                 i += 1
                 continue
+        # Recurse into nodes that have children (递归进入有子节点的节点)
+        if hasattr(child, "children") and child.children:
+            _process_includes(child.children, source_dir, diag)
         i += 1
 
 

@@ -81,6 +81,8 @@ def collect_jobs(
             continue  # no prompt, nothing to generate (无 prompt，跳过)
 
         src = node.src if isinstance(node, (Figure, Image)) else ""
+        if not src:
+            continue  # empty src, skip (空 src，跳过)
         output_path = (base_dir / src).resolve()
 
         # Path traversal safety: output must stay within base_dir (路径安全：输出必须在基目录内)
@@ -89,7 +91,7 @@ def collect_jobs(
         except ValueError:
             continue  # path escapes base_dir, skip (路径越界，跳过)
 
-        if not force and output_path.exists():
+        if not force and output_path.is_file():
             continue  # image already present, skip (图片已存在，跳过)
 
         jobs.append(
@@ -168,7 +170,7 @@ def generate_figure_job(
 
     if returncode != 0:
         return False
-    return job.output_path.exists()
+    return job.output_path.is_file()
 
 
 def run_generate_figures(
