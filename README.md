@@ -1098,6 +1098,10 @@ Presets provide a one-line starting configuration for common document types:
 | `zh`   | `ctexart`       | `zh`     | Chinese academic paper — compile with XeLaTeX |
 | `en`   | `article`       | `en`     | Standard English paper |
 
+Both presets include a comprehensive package set covering all wenqiao features:
+`amsmath`, `amssymb`, `graphicx`, `hyperref`, `xcolor`, `listings`, `amsthm`, `algorithm2e`, `booktabs`.
+Add `<!-- package-options: {...} -->` to configure individual packages, or add more via `<!-- packages: [...] -->`.
+
 All document directives override the preset:
 
 ```markdown

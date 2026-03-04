@@ -1089,6 +1089,10 @@ ln -s "$(pwd)/skills/wenqiao-writer" ~/.claude/skills/wenqiao-writer
 | `zh`  | `ctexart`       | `zh`     | 中文学术论文 — 需用 XeLaTeX 编译 |
 | `en`  | `article`       | `en`     | 标准英文论文 |
 
+两种预设均内置覆盖 wenqiao 全部功能所需的完整宏包列表：
+`amsmath`、`amssymb`、`graphicx`、`hyperref`、`xcolor`、`listings`、`amsthm`、`algorithm2e`、`booktabs`。
+可通过 `<!-- package-options: {...} -->` 配置各宏包选项，或用 `<!-- packages: [...] -->` 追加宏包。
+
 所有文档指令均可覆盖预设：
 
 ```markdown
