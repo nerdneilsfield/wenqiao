@@ -45,5 +45,6 @@ uv.lock.bak
 .swarm/
 .claude/review-loop.local.md
 .claude/settings.local.json
+.claude/*.log
 reviews/*
 !reviews/.gitkeep

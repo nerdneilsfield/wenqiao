@@ -13,11 +13,6 @@ def runner() -> CliRunner:
     return CliRunner()
 
 
-@pytest.fixture
-def cli() -> object:
-    """Return the CLI entry point (返回 CLI 入口)."""
-    return main
-
 
 def test_help() -> None:
     """帮助输出正常（Help output works）."""
@@ -558,3 +553,19 @@ def test_preset_unknown_cli(tmp_path: Path, runner: CliRunner) -> None:
     src.write_text("# Hello\n")
     result = runner.invoke(main, ["convert", str(src), "--preset", "nope"])
     assert result.exit_code != 0
+
+
+def test_preset_cli_overrides_directive(tmp_path: Path, runner: CliRunner) -> None:
+    """--preset flag should override <!-- preset: ... --> directive (CLI 标志优先于文档指令).
+
+    Verifies CLI > directive precedence: document says zh, CLI says en.
+    (验证 CLI > 文档指令 优先级：文档指定 zh，CLI 指定 en。)
+    """
+    src = tmp_path / "paper.mid.md"
+    src.write_text("<!-- preset: zh -->\n\n# Hello\n")
+    out = tmp_path / "paper.tex"
+    result = runner.invoke(main, ["convert", str(src), "--preset", "en", "-o", str(out)])
+    assert result.exit_code == 0, result.output
+    content = out.read_text()
+    assert "article" in content
+    assert "ctexart" not in content
