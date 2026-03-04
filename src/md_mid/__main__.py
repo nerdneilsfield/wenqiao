@@ -1,3 +1,3 @@
-from md_mid.cli import main
+from md_mid.cli import cli
 
-main()
+cli()

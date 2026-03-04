@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.scripts]
-md-mid = "md_mid.cli:main"
+md-mid = "md_mid.cli:cli"
 
 [build-system]
 requires = ["hatchling"]

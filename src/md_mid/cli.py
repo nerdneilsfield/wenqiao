@@ -1,4 +1,8 @@
-"""md-mid CLI 入口。"""
+"""md-mid CLI 入口 — 支持 convert / validate / format 子命令。
+
+CLI entry point with subcommands: convert, validate, format.
+Backward-compatible: ``md-mid file.mid.md`` defaults to ``convert``.
+"""
 
 from __future__ import annotations
 
@@ -12,12 +16,63 @@ from md_mid import __version__
 from md_mid.comment import process_comments
 from md_mid.config import load_config_file, load_template, resolve_config
 from md_mid.diagnostic import DiagCollector
+from md_mid.format_cmd import format_cmd
 from md_mid.latex import LaTeXRenderer
 from md_mid.markdown import MarkdownRenderer
 from md_mid.parser import parse
+from md_mid.validate import validate_cmd
+
+# ---------------------------------------------------------------------------
+# DefaultGroup: implicit "convert" when first arg is not a subcommand
+# (默认分组：首个参数非子命令时隐式使用 convert)
+# ---------------------------------------------------------------------------
 
 
-@click.command()
+class DefaultGroup(click.Group):
+    """Click Group that falls back to a default subcommand.
+
+    If the first argument is not a known subcommand and does not start with
+    ``-``, prepend ``convert`` so the old ``md-mid FILE`` invocation still
+    works.
+
+    当首个参数不是已知子命令且不以 ``-`` 开头时，自动插入 ``convert``，
+    保持旧版 ``md-mid FILE`` 调用方式兼容。
+    """
+
+    def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
+        """Inject 'convert' default subcommand when needed (需要时注入默认子命令).
+
+        Routes all args to ``convert`` unless the first token is a known
+        subcommand name or a group-level option (--help / --version).
+        This preserves option-first invocations like ``md-mid -o out file``.
+        (将所有参数路由到 convert，除非首个 token 是已知子命令或组级选项。)
+        """
+        if args and args[0] not in self.commands and args[0] not in ("--help", "--version"):
+            args = ["convert", *args]
+        return super().parse_args(ctx, args)
+
+
+# ---------------------------------------------------------------------------
+# Top-level CLI group (顶层 CLI 分组)
+# ---------------------------------------------------------------------------
+
+
+@click.group(cls=DefaultGroup, invoke_without_command=True)
+@click.version_option(version=__version__)
+@click.pass_context
+def cli(ctx: click.Context) -> None:
+    """md-mid: Academic Markdown intermediate format converter (学术 Markdown 中间格式转换工具)."""
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+
+
+# ---------------------------------------------------------------------------
+# convert subcommand — the original main() body
+# (convert 子命令 — 原 main() 函数体)
+# ---------------------------------------------------------------------------
+
+
+@cli.command("convert")
 @click.argument("input", type=click.Path(path_type=Path))  # No exists=True: allow "-" for stdin
 @click.option(
     "-t",
@@ -101,8 +156,7 @@ from md_mid.parser import parse
     default=False,
     help="Re-generate AI figures even if image files already exist (强制重新生成已有图片)",
 )
-@click.version_option(version=__version__)
-def main(
+def convert_cmd(
     input: Path,
     target: str | None,
     output: Path | None,
@@ -121,7 +175,10 @@ def main(
     figures_config: Path | None,
     force_regenerate: bool,
 ) -> None:
-    """md-mid: Academic Markdown intermediate format converter (学术 Markdown 中间格式转换工具)."""
+    """Convert academic Markdown to LaTeX/Markdown/HTML.
+
+    转换学术 Markdown 为 LaTeX/Markdown/HTML。
+    """
     # 读取输入：stdin 或文件 (Read input: stdin or file)
     if str(input) == "-":
         text = sys.stdin.read()
@@ -328,3 +385,11 @@ def main(
             output = input.with_suffix(suffix)
         output.write_text(result, encoding="utf-8")
         click.echo(f"Written to {output}")
+
+
+# Register subcommands (注册子命令)
+cli.add_command(validate_cmd)
+cli.add_command(format_cmd)
+
+# Backward-compat alias (向后兼容别名)
+main = cli
