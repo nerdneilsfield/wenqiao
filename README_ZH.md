@@ -1,8 +1,9 @@
 # 文桥 · Wenqiao
 
-[![Python](https://img.shields.io/badge/Python-≥3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![CI](https://github.com/nerdneilsfield/wenqiao/actions/workflows/ci.yml/badge.svg)](https://github.com/nerdneilsfield/wenqiao/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/wenqiao)](https://pypi.org/project/wenqiao/)
+[![Python](https://img.shields.io/pypi/pyversions/wenqiao?logo=python&logoColor=white)](https://pypi.org/project/wenqiao/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-479%20passed-brightgreen)](tests/)
 [![mypy](https://img.shields.io/badge/type%20check-mypy%20strict-blue)](https://mypy-lang.org/)
 [![Ruff](https://img.shields.io/badge/linter-ruff-261230?logo=ruff)](https://docs.astral.sh/ruff/)
 [![uv](https://img.shields.io/badge/pkg-uv-DE5FE9?logo=uv)](https://docs.astral.sh/uv/)
@@ -110,13 +111,27 @@ flowchart TD
 
 ### 前置条件
 
-- **Python 3.14+**
-- [**uv**](https://docs.astral.sh/uv/) 包管理器
+- **Python 3.12+**
+- [**uv**](https://docs.astral.sh/uv/) 包管理器（推荐）
 
 ### 安装
 
+**从 PyPI 安装：**
+
 ```bash
-git clone https://github.com/<owner>/wenqiao.git
+pip install wenqiao
+
+# 或使用 uv
+uv pip install wenqiao
+
+# 带 AI 图片生成支持
+pip install wenqiao[figures]
+```
+
+**从源码安装（开发用）：**
+
+```bash
+git clone https://github.com/nerdneilsfield/wenqiao.git
 cd wenqiao
 uv sync
 ```
@@ -991,6 +1006,43 @@ make test                    # 运行全部 479 个测试
 
 测试夹具在 [`tests/fixtures/`](tests/fixtures/) 下提供可复用的 `.mid.md` 文档：
 `minimal`、`heading_para`、`math`、`cite_ref`、`comments`、`full_example`。
+
+## Claude Code 技能
+
+本项目附带一个 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 技能
+（`wenqiao-writer`），教会 Claude 如何编写规范的 `.mid.md` 文档。
+
+### 配置
+
+将技能链接到 Claude Code 配置目录：
+
+```bash
+# 从项目根目录执行
+ln -s "$(pwd)/skills/wenqiao-writer" ~/.claude/skills/wenqiao-writer
+```
+
+项目已在 `.claude/skills/wenqiao-writer` 包含指向 `skills/wenqiao-writer` 的符号链接。
+
+### 使用方法
+
+安装后，在 Claude Code 中通过名称调用：
+
+```
+/wenqiao-writer
+```
+
+或直接让 Claude "写一篇 `.mid.md` 论文" —— 它会自动识别并使用该技能。技能涵盖：
+
+- 所有 `.mid.md` 指令（文档头、标签、标题、环境等）
+- 正确的引用语法（`[文本](cite:key)`）和交叉引用（`[文本](ref:label)`）
+- AI 图片元数据指令
+- 常见错误及避免方法
+- 测试夹具的完整功能覆盖清单
+
+### 示例提示
+
+> 写一篇关于基于 FPGA 加速的点云配准方法的 `.mid.md` 论文草稿。
+> 包含摘要、3 个章节、1 个对比表格和 2 张带 AI 生成提示的图片。
 
 ## 贡献指南
 

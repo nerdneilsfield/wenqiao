@@ -1,8 +1,9 @@
 # 文桥 · Wenqiao
 
-[![Python](https://img.shields.io/badge/Python-≥3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![CI](https://github.com/nerdneilsfield/wenqiao/actions/workflows/ci.yml/badge.svg)](https://github.com/nerdneilsfield/wenqiao/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/wenqiao)](https://pypi.org/project/wenqiao/)
+[![Python](https://img.shields.io/pypi/pyversions/wenqiao?logo=python&logoColor=white)](https://pypi.org/project/wenqiao/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-479%20passed-brightgreen)](tests/)
 [![mypy](https://img.shields.io/badge/type%20check-mypy%20strict-blue)](https://mypy-lang.org/)
 [![Ruff](https://img.shields.io/badge/linter-ruff-261230?logo=ruff)](https://docs.astral.sh/ruff/)
 [![uv](https://img.shields.io/badge/pkg-uv-DE5FE9?logo=uv)](https://docs.astral.sh/uv/)
@@ -112,13 +113,27 @@ All nodes extend a base `Node` class with `children`, `metadata`, and `position`
 
 ### Prerequisites
 
-- **Python 3.14+**
-- [**uv**](https://docs.astral.sh/uv/) package manager
+- **Python 3.12+**
+- [**uv**](https://docs.astral.sh/uv/) package manager (recommended)
 
 ### Installation
 
+**From PyPI:**
+
 ```bash
-git clone https://github.com/<owner>/wenqiao.git
+pip install wenqiao
+
+# Or with uv
+uv pip install wenqiao
+
+# With AI figure generation support
+pip install wenqiao[figures]
+```
+
+**From source (for development):**
+
+```bash
+git clone https://github.com/nerdneilsfield/wenqiao.git
 cd wenqiao
 uv sync
 ```
@@ -997,6 +1012,46 @@ make test                    # Run all 479 tests
 
 Test fixtures in [`tests/fixtures/`](tests/fixtures/) provide reusable `.mid.md`
 documents: `minimal`, `heading_para`, `math`, `cite_ref`, `comments`, `full_example`.
+
+## Claude Code Skill
+
+This project ships a [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill
+(`wenqiao-writer`) that teaches Claude how to write well-formed `.mid.md` documents.
+
+### Setup
+
+Symlink the skill into your Claude Code configuration:
+
+```bash
+# From the project root
+ln -s "$(pwd)/skills/wenqiao-writer" ~/.claude/skills/wenqiao-writer
+```
+
+Or, if you have the repo cloned elsewhere, the project already includes a symlink at
+`.claude/skills/wenqiao-writer` pointing to `skills/wenqiao-writer`.
+
+### Usage
+
+Once installed, invoke the skill in Claude Code by name:
+
+```
+/wenqiao-writer
+```
+
+Or simply ask Claude to "write a `.mid.md` paper" — it will automatically pick up the
+skill. The skill teaches Claude:
+
+- All `.mid.md` directives (document headers, labels, captions, environments, etc.)
+- Correct citation syntax (`[text](cite:key)`) and cross-references (`[text](ref:label)`)
+- AI figure metadata directives
+- Common mistakes to avoid
+- A full feature coverage checklist for test fixtures
+
+### Example prompt
+
+> Write a `.mid.md` draft for a paper about point cloud registration using FPGA
+> acceleration. Include an abstract, 3 sections, a comparison table, and 2 figures
+> with AI generation prompts.
 
 ## Contributing
 
