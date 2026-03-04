@@ -3,7 +3,19 @@ name = "wenqiao"
 version = "0.1.0"
 description = "Wenqiao (文桥): Markdown as the canonical source for academic writing / 以 Markdown 为唯一真源的学术写作工具"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
+license = "MIT"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Text Processing :: Markup :: LaTeX",
+    "Topic :: Text Processing :: Markup :: Markdown",
+]
 dependencies = [
     "markdown-it-py>=3.0",
     "mdit-py-plugins>=0.4",
@@ -13,6 +25,11 @@ dependencies = [
 
 [project.optional-dependencies]
 figures = ["openai>=1.0"]
+
+[project.urls]
+Homepage = "https://github.com/nerdneilsfield/wenqiao"
+Repository = "https://github.com/nerdneilsfield/wenqiao"
+Issues = "https://github.com/nerdneilsfield/wenqiao/issues"
 
 [project.scripts]
 wenqiao = "wenqiao.cli:cli"
