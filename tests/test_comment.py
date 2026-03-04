@@ -329,6 +329,20 @@ def test_include_tex_non_utf8_file(tmp_path: Path) -> None:
     assert any("include-tex" in d.message for d in dc.errors)
 
 
+# ── Task 2 (wenqiao): preset in DOCUMENT_DIRECTIVES ──────────────────────────
+
+
+def test_preset_directive_recognized_as_document_level() -> None:
+    """'preset' should be in DOCUMENT_DIRECTIVES (preset 应在文档级指令集中).
+
+    Verifies that the preset key is recognized at parse time.
+    (验证 preset 键在解析时被识别为文档级指令。)
+    """
+    from wenqiao.comment import DOCUMENT_DIRECTIVES
+
+    assert "preset" in DOCUMENT_DIRECTIVES
+
+
 # ── P0-1: include-tex recursive into environments ──────────────────────────
 
 
