@@ -124,9 +124,7 @@ def validate_crossrefs(info: ValidationInfo, diag: DiagCollector) -> None:
     """
     for label in sorted(info.crossref_labels):
         if label not in info.labels:
-            diag.warning(
-                f"Cross-reference '{label}' has no matching label (交叉引用无对应标签)"
-            )
+            diag.warning(f"Cross-reference '{label}' has no matching label (交叉引用无对应标签)")
 
 
 def validate_images(

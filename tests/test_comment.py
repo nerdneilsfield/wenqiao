@@ -336,11 +336,7 @@ def test_include_tex_inside_environment(tmp_path: Path) -> None:
     """include-tex inside begin/end environment is processed (环境内的 include-tex 被处理)."""
     frag = tmp_path / "frag.tex"
     frag.write_text(r"\textbf{included}")
-    text = (
-        "<!-- begin: algorithm -->\n"
-        "<!-- include-tex: frag.tex -->\n"
-        "<!-- end: algorithm -->\n"
-    )
+    text = "<!-- begin: algorithm -->\n<!-- include-tex: frag.tex -->\n<!-- end: algorithm -->\n"
     doc = parse(text)
     east = process_comments(doc, str(tmp_path / "test.md"))
     # The Environment should contain a RawBlock with the included content

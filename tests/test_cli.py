@@ -465,9 +465,7 @@ def test_bad_config_type_shows_friendly_error(tmp_path: Path) -> None:
     src = tmp_path / "t.mid.md"
     src.write_text("# Hello\n\nWorld.\n")
     out = tmp_path / "out.tex"
-    result = CliRunner().invoke(
-        main, [str(src), "-o", str(out), "--config", str(cfg)]
-    )
+    result = CliRunner().invoke(main, [str(src), "-o", str(out), "--config", str(cfg)])
     # Should exit non-zero (应退出非零)
     assert result.exit_code != 0
     # Should show friendly "Configuration error" message (应显示友好配置错误信息)

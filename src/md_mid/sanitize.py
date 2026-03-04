@@ -15,36 +15,92 @@ from html.parser import HTMLParser
 from md_mid.url_check import is_unsafe_url
 
 # Safe HTML tags — normal and self-closing (安全 HTML 标签白名单)
-_SAFE_TAGS: frozenset[str] = frozenset({
-    "div", "span", "p", "br", "hr",
-    "a", "img",
-    "table", "thead", "tbody", "tr", "th", "td",
-    "ul", "ol", "li", "dl", "dt", "dd",
-    "h1", "h2", "h3", "h4", "h5", "h6",
-    "blockquote", "pre", "code",
-    "em", "strong", "sub", "sup",
-    "figure", "figcaption",
-    "details", "summary",
-    "abbr", "mark", "del", "ins", "s", "b", "i", "u", "small",
-    "caption", "colgroup", "col",
-})
+_SAFE_TAGS: frozenset[str] = frozenset(
+    {
+        "div",
+        "span",
+        "p",
+        "br",
+        "hr",
+        "a",
+        "img",
+        "table",
+        "thead",
+        "tbody",
+        "tr",
+        "th",
+        "td",
+        "ul",
+        "ol",
+        "li",
+        "dl",
+        "dt",
+        "dd",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "blockquote",
+        "pre",
+        "code",
+        "em",
+        "strong",
+        "sub",
+        "sup",
+        "figure",
+        "figcaption",
+        "details",
+        "summary",
+        "abbr",
+        "mark",
+        "del",
+        "ins",
+        "s",
+        "b",
+        "i",
+        "u",
+        "small",
+        "caption",
+        "colgroup",
+        "col",
+    }
+)
 
 # Self-closing / void HTML tags (自闭合标签)
-_VOID_TAGS: frozenset[str] = frozenset({
-    "br", "hr", "img", "col",
-})
+_VOID_TAGS: frozenset[str] = frozenset(
+    {
+        "br",
+        "hr",
+        "img",
+        "col",
+    }
+)
 
 # Tags whose content is stripped entirely (标签及内容全部剥离)
 _STRIP_CONTENT_TAGS: frozenset[str] = frozenset({"script", "style"})
 
 # Safe global attributes (安全全局属性白名单)
-_SAFE_ATTRS: frozenset[str] = frozenset({
-    "class", "id", "alt", "title",
-    "colspan", "rowspan", "align", "valign",
-    "width", "height",
-    "role", "aria-label", "aria-hidden",
-    "lang", "dir",
-})
+_SAFE_ATTRS: frozenset[str] = frozenset(
+    {
+        "class",
+        "id",
+        "alt",
+        "title",
+        "colspan",
+        "rowspan",
+        "align",
+        "valign",
+        "width",
+        "height",
+        "role",
+        "aria-label",
+        "aria-hidden",
+        "lang",
+        "dir",
+    }
+)
 
 # Attributes that contain URLs — validated against scheme (URL 类属性 — 需校验 scheme)
 _URL_ATTRS: frozenset[str] = frozenset({"href", "src"})

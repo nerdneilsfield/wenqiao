@@ -348,9 +348,7 @@ class MarkdownRenderer:
         if isinstance(ai, dict):
             from md_mid.ai_meta import render_ai_details_html
 
-            lines.extend(
-                render_ai_details_html(ai, _esc, summary="\U0001f3a8 AI Generation Info")
-            )
+            lines.extend(render_ai_details_html(ai, _esc, summary="\U0001f3a8 AI Generation Info"))
 
         lines.append("</figure>")
         return "\n".join(lines)

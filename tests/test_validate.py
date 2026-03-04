@@ -34,12 +34,16 @@ from md_mid.validate import (
 
 def test_collect_citations() -> None:
     """Citation nodes → cite_keys set (Citation 节点 → cite_keys 集合)."""
-    doc = Document(children=[
-        Paragraph(children=[
-            Citation(keys=["wang2024", "li2023"]),
-            Citation(keys=["wang2024"]),  # duplicate (重复)
-        ]),
-    ])
+    doc = Document(
+        children=[
+            Paragraph(
+                children=[
+                    Citation(keys=["wang2024", "li2023"]),
+                    Citation(keys=["wang2024"]),  # duplicate (重复)
+                ]
+            ),
+        ]
+    )
     info = collect_east_info(doc)
     assert info.cite_keys == {"wang2024", "li2023"}
 
@@ -54,22 +58,28 @@ def test_collect_labels() -> None:
 
 def test_collect_crossrefs() -> None:
     """CrossRef nodes → crossref_labels set (CrossRef 节点 → crossref_labels 集合)."""
-    doc = Document(children=[
-        Paragraph(children=[
-            CrossRef(label="fig:arch"),
-            CrossRef(label="tab:results"),
-        ]),
-    ])
+    doc = Document(
+        children=[
+            Paragraph(
+                children=[
+                    CrossRef(label="fig:arch"),
+                    CrossRef(label="tab:results"),
+                ]
+            ),
+        ]
+    )
     info = collect_east_info(doc)
     assert info.crossref_labels == {"fig:arch", "tab:results"}
 
 
 def test_collect_images() -> None:
     """Figure/Image → image_srcs list (Figure/Image → image_srcs 列表)."""
-    doc = Document(children=[
-        Figure(src="fig1.png"),
-        Paragraph(children=[Image(src="inline.jpg")]),
-    ])
+    doc = Document(
+        children=[
+            Figure(src="fig1.png"),
+            Paragraph(children=[Image(src="inline.jpg")]),
+        ]
+    )
     info = collect_east_info(doc)
     assert "fig1.png" in info.image_srcs
     assert "inline.jpg" in info.image_srcs
@@ -197,10 +207,7 @@ def test_validate_bib_from_directive(tmp_path: Path) -> None:
     bib = tmp_path / "auto.bib"
     bib.write_text("@article{found, author={A}, title={B}, year={2024}}\n")
     src = tmp_path / "doc.mid.md"
-    src.write_text(
-        "<!-- bibliography: auto.bib -->\n\n"
-        "[A](cite:found) and [B](cite:not_in_bib).\n"
-    )
+    src.write_text("<!-- bibliography: auto.bib -->\n\n[A](cite:found) and [B](cite:not_in_bib).\n")
     result = CliRunner().invoke(main, ["validate", str(src), "--verbose"])
     combined = result.output + (result.stderr_bytes or b"").decode()
     # Should warn about not_in_bib, not about found (应警告 not_in_bib，不警告 found)

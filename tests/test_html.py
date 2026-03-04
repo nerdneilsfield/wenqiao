@@ -563,12 +563,14 @@ class TestHtmlFootnoteOrder:
         d = doc(
             fn_def_b,
             fn_def_a,
-            Paragraph(children=[
-                Text(content="See "),
-                fn_ref_a,
-                Text(content=" and "),
-                fn_ref_b,
-            ]),
+            Paragraph(
+                children=[
+                    Text(content="See "),
+                    fn_ref_a,
+                    Text(content=" and "),
+                    fn_ref_b,
+                ]
+            ),
         )
         result = HTMLRenderer(mode="body").render(d)
         # [^a] was ref'd first → should appear first in <ol> (a 先引用故在列表中靠前)
