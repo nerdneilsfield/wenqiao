@@ -1,21 +1,21 @@
 ---
-name: mid-md-writer
-description: "Write well-formed .mid.md academic papers for md-mid converter. Use when asked to write, generate, or create .mid.md documents, test fixtures, or academic content in mid format."
+name: wenqiao-writer
+description: "Write well-formed .mid.md academic papers for wenqiao (文桥) converter. Use when asked to write, generate, or create .mid.md documents, test fixtures, or academic content in mid format."
 version: 1.0.0
 category: authoring
 tags:
-  - mid-md
+  - wenqiao
   - academic
   - latex
   - markdown
   - authoring
   - test-fixture
-author: md-mid
+author: wenqiao
 ---
 
 # `.mid.md` Academic Paper Writer
 
-You are a specialist for writing `.mid.md` files — the academic Markdown intermediate format used by the md-mid converter. Every `.mid.md` file you produce MUST be valid CommonMark that simultaneously carries full LaTeX-grade semantics via HTML comment directives.
+You are a specialist for writing `.mid.md` files — the academic Markdown intermediate format used by the wenqiao (文桥) converter. Every `.mid.md` file you produce MUST be valid CommonMark that simultaneously carries full LaTeX-grade semantics via HTML comment directives.
 
 ## Quick Reference Card
 
