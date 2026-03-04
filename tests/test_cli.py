@@ -3,7 +3,7 @@ from pathlib import Path
 
 from click.testing import CliRunner
 
-from md_mid.cli import main
+from md_mid.cli import cli as main
 
 
 def test_help() -> None:
@@ -472,3 +472,60 @@ def test_bad_config_type_shows_friendly_error(tmp_path: Path) -> None:
     assert result.exit_code != 0
     # Should show friendly "Configuration error" message (应显示友好配置错误信息)
     assert "Configuration error" in (result.output or "")
+
+
+# ── Subcommand backward compatibility (子命令向后兼容) ─────────────────────────
+
+
+def test_no_subcommand_defaults_to_convert(tmp_path: Path) -> None:
+    """md-mid FILE (no subcommand) defaults to convert (无子命令默认为 convert).
+
+    Backward compatibility: ``md-mid file.mid.md`` still works.
+    """
+    src = tmp_path / "test.mid.md"
+    src.write_text("# Hello\n\nWorld.\n")
+    out = tmp_path / "test.tex"
+    result = CliRunner().invoke(main, [str(src), "-o", str(out)])
+    assert result.exit_code == 0
+    content = out.read_text()
+    assert "\\section{Hello}" in content
+
+
+def test_convert_subcommand_explicit(tmp_path: Path) -> None:
+    """Explicit 'convert' subcommand works (显式 convert 子命令可用)."""
+    src = tmp_path / "test.mid.md"
+    src.write_text("# Hello\n\nWorld.\n")
+    out = tmp_path / "test.tex"
+    result = CliRunner().invoke(main, ["convert", str(src), "-o", str(out)])
+    assert result.exit_code == 0
+    content = out.read_text()
+    assert "\\section{Hello}" in content
+
+
+def test_option_first_invocation(tmp_path: Path) -> None:
+    """Option-first form md-mid -o out file works (选项在前的调用方式仍可用).
+
+    Backward compat: ``md-mid -o out.tex file.mid.md`` must still route to convert.
+    """
+    src = tmp_path / "test.mid.md"
+    src.write_text("# Hello\n\nWorld.\n")
+    out = tmp_path / "test.tex"
+    result = CliRunner().invoke(main, ["-o", str(out), str(src)])
+    assert result.exit_code == 0
+    assert out.exists()
+    content = out.read_text()
+    assert "\\section{Hello}" in content
+
+
+def test_validate_help() -> None:
+    """validate --help shows help (validate --help 显示帮助信息)."""
+    result = CliRunner().invoke(main, ["validate", "--help"])
+    assert result.exit_code == 0
+    assert "validate" in result.output.lower()
+
+
+def test_format_help() -> None:
+    """format --help shows help (format --help 显示帮助信息)."""
+    result = CliRunner().invoke(main, ["format", "--help"])
+    assert result.exit_code == 0
+    assert "format" in result.output.lower()
