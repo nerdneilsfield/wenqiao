@@ -300,3 +300,17 @@ def test_preset_directive_zh_sets_ctexart() -> None:
 
     result = api_convert("<!-- preset: zh -->\n\n# Hello\n")
     assert "ctexart" in result.text
+
+
+def test_preset_kwarg_overrides_preset_directive() -> None:
+    """preset kwarg should override document directive (preset 参数应覆盖文档指令).
+
+    When the caller passes preset="en" and the document says <!-- preset: zh -->,
+    the explicit kwarg wins (CLI > directive priority).
+    (显式传参优先于文档指令，实现 CLI > 指令 的优先级。)
+    """
+    from wenqiao.api import convert as api_convert
+
+    result = api_convert("<!-- preset: zh -->\n\n# Hello\n", preset="en")
+    assert "article" in result.text
+    assert "ctexart" not in result.text

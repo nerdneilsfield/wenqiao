@@ -87,6 +87,7 @@ def convert(
     template: Path | None = None,
     bib: Path | str | dict[str, str] | None = None,
     strict: bool = False,
+    preset: str | None = None,  # Built-in preset name (内置预设名称)
 ) -> ConvertResult:
     """Convert academic Markdown to LaTeX, Markdown, or HTML.
 
@@ -101,6 +102,7 @@ def convert(
         template: Template YAML file path (模板 YAML 文件路径)
         bib: .bib file path / raw text / pre-parsed dict (参考文献来源)
         strict: Raise ConversionError on diagnostic errors (有诊断错误时抛出异常)
+        preset: Built-in preset name — "zh" / "en" (内置预设名称)
 
     Returns:
         ConvertResult with rendered text and metadata (包含渲染文本和元数据的结果)
@@ -141,6 +143,7 @@ def convert(
         cli_overrides=cli_dict if cli_dict else None,
         template_path=template,
         pre_built=config if isinstance(config, WenqiaoConfig) else None,
+        preset_name=preset,  # Explicit preset overrides document directive (显式预设优先于文档指令)
     )
 
     # Use resolved target from config — dict/WenqiaoConfig may override the default
