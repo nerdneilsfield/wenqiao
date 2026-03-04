@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
-from md_mid.nodes import (
+from wenqiao.nodes import (
     Environment,
     Figure,
     Image,
@@ -18,7 +18,7 @@ from md_mid.nodes import (
 )
 
 if TYPE_CHECKING:
-    from md_mid.diagnostic import DiagCollector
+    from wenqiao.diagnostic import DiagCollector
 
 
 class LaTeXBlockMixin:

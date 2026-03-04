@@ -13,8 +13,8 @@ from markdown_it.tree import SyntaxTreeNode
 from mdit_py_plugins.dollarmath import dollarmath_plugin
 from mdit_py_plugins.footnote import footnote_plugin
 
-from md_mid.diagnostic import DiagCollector
-from md_mid.nodes import (
+from wenqiao.diagnostic import DiagCollector
+from wenqiao.nodes import (
     Blockquote,
     Citation,
     CodeBlock,

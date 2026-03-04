@@ -11,10 +11,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import cast
 
-from md_mid.diagnostic import DiagCollector
-from md_mid.escape import escape_latex, escape_latex_with_protection
-from md_mid.latex_blocks import LaTeXBlockMixin
-from md_mid.nodes import (
+from wenqiao.diagnostic import DiagCollector
+from wenqiao.escape import escape_latex, escape_latex_with_protection
+from wenqiao.latex_blocks import LaTeXBlockMixin
+from wenqiao.nodes import (
     Citation,
     CodeBlock,
     CodeInline,

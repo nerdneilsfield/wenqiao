@@ -14,7 +14,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from md_mid.genfig import FigureJob, FigureRunner
+from wenqiao.genfig import FigureJob, FigureRunner
 
 # Default TOML config path (默认配置路径)
 _DEFAULT_CONFIG = "~/.config/skiils.toml"

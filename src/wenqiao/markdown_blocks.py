@@ -10,7 +10,7 @@ from __future__ import annotations
 import html as _html
 from typing import TYPE_CHECKING, cast
 
-from md_mid.nodes import (
+from wenqiao.nodes import (
     Citation,
     CodeInline,
     CrossRef,
@@ -28,7 +28,7 @@ from md_mid.nodes import (
 )
 
 if TYPE_CHECKING:
-    from md_mid.diagnostic import DiagCollector
+    from wenqiao.diagnostic import DiagCollector
 
 
 def _esc(text: str) -> str:
@@ -91,7 +91,7 @@ class MarkdownBlockMixin:
         # AI 信息折叠块 (AI info details block)
         ai = metadata.get("ai")
         if isinstance(ai, dict):
-            from md_mid.ai_meta import render_ai_details_html
+            from wenqiao.ai_meta import render_ai_details_html
 
             lines.extend(render_ai_details_html(ai, _esc, summary="\U0001f3a8 AI Generation Info"))
 
@@ -160,7 +160,7 @@ class MarkdownBlockMixin:
         if isinstance(node, Link):
             text = self._render_cell_html(node.children)
             # Block dangerous schemes in table cell links (阻止表格单元格中的危险 scheme)
-            from md_mid.url_check import is_unsafe_url
+            from wenqiao.url_check import is_unsafe_url
 
             if is_unsafe_url(node.url):
                 return text

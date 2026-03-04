@@ -1,6 +1,6 @@
-"""Public Python API for md-mid.
+"""Public Python API for wenqiao (文桥).
 
-提供程序化调用 md-mid 转换管线的公共接口。
+提供程序化调用 wenqiao 转换管线的公共接口。
 
 Exposes convert(), validate_text(), format_text(), and parse_document()
 for programmatic use from Python code (build systems, Jupyter, web services).
@@ -11,17 +11,17 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from md_mid.config import MdMidConfig
-from md_mid.diagnostic import DiagCollector, Diagnostic
-from md_mid.nodes import Document
-from md_mid.pipeline import (
+from wenqiao.config import WenqiaoConfig
+from wenqiao.diagnostic import DiagCollector, Diagnostic
+from wenqiao.nodes import Document
+from wenqiao.pipeline import (
     build_config,
     create_renderer,
     inject_metadata,
     parse_and_process,
     resolve_bib,
 )
-from md_mid.validate import collect_east_info, validate_bib, validate_crossrefs, validate_images
+from wenqiao.validate import collect_east_info, validate_bib, validate_crossrefs, validate_images
 
 # -- Result / Error types (结果/错误类型) ------------------------------------
 
@@ -40,7 +40,7 @@ class ConvertResult:
 
     text: str
     diagnostics: list[Diagnostic]
-    config: MdMidConfig
+    config: WenqiaoConfig
     document: Document
     timings: dict[str, float] = field(default_factory=dict)  # Phase timings (阶段计时)
 
@@ -83,7 +83,7 @@ def convert(
     target: str | None = None,
     mode: str | None = None,
     locale: str | None = None,
-    config: MdMidConfig | dict[str, object] | None = None,
+    config: WenqiaoConfig | dict[str, object] | None = None,
     template: Path | None = None,
     bib: Path | str | dict[str, str] | None = None,
     strict: bool = False,
@@ -140,11 +140,11 @@ def convert(
         east.metadata,
         cli_overrides=cli_dict if cli_dict else None,
         template_path=template,
-        pre_built=config if isinstance(config, MdMidConfig) else None,
+        pre_built=config if isinstance(config, WenqiaoConfig) else None,
     )
 
-    # Use resolved target from config — dict/MdMidConfig may override the default
-    # (使用配置中解析后的目标格式 — 字典/MdMidConfig 可能覆盖默认值)
+    # Use resolved target from config — dict/WenqiaoConfig may override the default
+    # (使用配置中解析后的目标格式 — 字典/WenqiaoConfig 可能覆盖默认值)
     effective_target = cfg.target
 
     # Validate resolved target (校验解析后的目标格式)
@@ -251,7 +251,7 @@ def format_text(source: str | Path) -> str:
     Returns:
         Formatted Markdown text (格式化后的 Markdown 文本)
     """
-    from md_mid.markdown import MarkdownRenderer
+    from wenqiao.markdown import MarkdownRenderer
 
     text, filename = _read_source(source)
     diag = DiagCollector(filename)

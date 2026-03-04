@@ -9,17 +9,17 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
-from md_mid.bibtex import parse_bib
-from md_mid.comment import process_comments
-from md_mid.config import (
-    MdMidConfig,
+from wenqiao.bibtex import parse_bib
+from wenqiao.comment import process_comments
+from wenqiao.config import (
+    WenqiaoConfig,
     load_config_file,
     load_template,
     resolve_config,
 )
-from md_mid.diagnostic import DiagCollector
-from md_mid.nodes import Document
-from md_mid.parser import parse
+from wenqiao.diagnostic import DiagCollector
+from wenqiao.nodes import Document
+from wenqiao.parser import parse
 
 
 class Renderer(Protocol):
@@ -58,9 +58,9 @@ def build_config(
     cli_overrides: dict[str, object] | None = None,
     config_path: Path | None = None,
     template_path: Path | None = None,
-    pre_built: MdMidConfig | None = None,
+    pre_built: WenqiaoConfig | None = None,
     diag: DiagCollector | None = None,
-) -> MdMidConfig:
+) -> WenqiaoConfig:
     """Unified config resolution (统一配置解析).
 
     Handles the full priority chain: CLI > doc > config file > template > defaults.
@@ -72,11 +72,11 @@ def build_config(
         cli_overrides: CLI arg overrides (CLI 参数覆盖)
         config_path: External config file path (外部配置文件路径)
         template_path: Template YAML file path (模板 YAML 文件路径)
-        pre_built: Pre-built MdMidConfig to use directly (直接使用的预构建配置)
+        pre_built: Pre-built WenqiaoConfig to use directly (直接使用的预构建配置)
         diag: Diagnostic collector for config warnings (配置警告的诊断收集器)
 
     Returns:
-        Fully resolved MdMidConfig (完全解析的配置)
+        Fully resolved WenqiaoConfig (完全解析的配置)
     """
     if pre_built is not None:
         return pre_built
@@ -94,7 +94,7 @@ def build_config(
 
 def inject_metadata(
     east: Document,
-    cfg: MdMidConfig,
+    cfg: WenqiaoConfig,
     target: str,
 ) -> None:
     """Inject config metadata into EAST for renderer use (注入配置元数据供渲染器使用).
@@ -137,7 +137,7 @@ def inject_metadata(
 
 def create_renderer(
     target: str,
-    cfg: MdMidConfig,
+    cfg: WenqiaoConfig,
     bib: dict[str, str],
     diag: DiagCollector,
 ) -> Renderer:
@@ -156,7 +156,7 @@ def create_renderer(
         ValueError: If target is not supported (目标格式不受支持时)
     """
     if target == "latex":
-        from md_mid.latex import LaTeXRenderer
+        from wenqiao.latex import LaTeXRenderer
 
         return LaTeXRenderer(
             mode=cfg.mode,
@@ -168,7 +168,7 @@ def create_renderer(
         )
 
     if target == "markdown":
-        from md_mid.markdown import MarkdownRenderer
+        from wenqiao.markdown import MarkdownRenderer
 
         return MarkdownRenderer(
             bib=bib,
@@ -179,7 +179,7 @@ def create_renderer(
         )
 
     if target == "html":
-        from md_mid.html import HTMLRenderer
+        from wenqiao.html import HTMLRenderer
 
         return HTMLRenderer(
             mode=cfg.mode,

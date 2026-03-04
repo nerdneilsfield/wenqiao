@@ -7,8 +7,8 @@ Extracted from comment.py to keep modules under 500 lines.
 
 from __future__ import annotations
 
-from md_mid.diagnostic import DiagCollector
-from md_mid.nodes import (
+from wenqiao.diagnostic import DiagCollector
+from wenqiao.nodes import (
     Environment,
     Node,
     Paragraph,
@@ -32,7 +32,7 @@ def _process_environments_in(children: list[Node], diag: DiagCollector) -> None:
     (预扫描 end 指令，避免孤立 begin 导致 O(n²) 扫描).
     """
     # Import here to avoid circular import at module level (函数级导入避免循环)
-    from md_mid.comment import _parse_comment, _pos_from_node
+    from wenqiao.comment import _parse_comment, _pos_from_node
 
     # Pre-scan: collect env names that have end directives (预扫描有 end 指令的环境名)
     names_with_ends: set[str] = set()
@@ -112,7 +112,7 @@ def _collect_env_directives(env: Environment, diag: DiagCollector) -> None:
     收集环境节点开头的环境级指令，移入 environment.metadata。
     Stops at first non-directive node (遇到非指令节点时停止).
     """
-    from md_mid.comment import ENV_DIRECTIVES, _normalize_key, _parse_comment
+    from wenqiao.comment import ENV_DIRECTIVES, _normalize_key, _parse_comment
 
     to_remove: list[int] = []
     for i, child in enumerate(env.children):
@@ -144,7 +144,7 @@ def _find_matching_end(
     查找匹配的 <!-- end: env_name -->，支持嵌套同名环境。
     Uses depth counter for same-name nesting (使用深度计数器正确处理同名嵌套).
     """
-    from md_mid.comment import _parse_comment
+    from wenqiao.comment import _parse_comment
 
     depth = 1  # Current nesting depth (当前嵌套深度)
     for j in range(start, len(children)):

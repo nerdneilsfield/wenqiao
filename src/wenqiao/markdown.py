@@ -10,9 +10,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import cast
 
-from md_mid.diagnostic import DiagCollector, Position
-from md_mid.markdown_blocks import MarkdownBlockMixin, _esc
-from md_mid.nodes import (
+from wenqiao.diagnostic import DiagCollector, Position
+from wenqiao.markdown_blocks import MarkdownBlockMixin, _esc
+from wenqiao.nodes import (
     Citation,
     CodeBlock,
     CodeInline,
@@ -307,7 +307,7 @@ class MarkdownRenderer(MarkdownBlockMixin):
         rb = cast(RawBlock, node)
         if rb.kind == "html":
             # Sanitize raw HTML to prevent XSS (清洗原始 HTML 防止 XSS)
-            from md_mid.sanitize import sanitize_html
+            from wenqiao.sanitize import sanitize_html
 
             return sanitize_html(rb.content)
         # LaTeX raw block: wrap in details fold (LaTeX 块：折叠显示)

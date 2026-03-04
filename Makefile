@@ -10,7 +10,7 @@ format:
 	uv run ruff format src/ tests/
 
 typecheck:
-	uv run mypy src/md_mid/
+	uv run mypy src/wenqiao/
 
 check: lint typecheck test
 

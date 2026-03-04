@@ -1,4 +1,4 @@
-"""Unified configuration for md-mid.
+"""Unified configuration for wenqiao (文桥).
 
 统一配置对象，实现 PRD §10.1 优先级链：
 CLI args > document directives > external config > template > defaults.
@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, cast
 from ruamel.yaml import YAML
 
 if TYPE_CHECKING:
-    from md_mid.diagnostic import DiagCollector
+    from wenqiao.diagnostic import DiagCollector
 
 # Module-level YAML parser (模块级 YAML 解析器)
 _yaml = YAML(typ="safe")
@@ -57,7 +57,7 @@ _DEFAULTS: dict[str, object] = {
 
 
 @dataclass
-class MdMidConfig:
+class WenqiaoConfig:
     """Central configuration object (中央配置对象).
 
     Attributes follow PRD §10.2 naming (snake_case internally, kebab-case externally).
@@ -100,7 +100,7 @@ class MdMidConfig:
         cls,
         data: dict[str, object],
         diag: DiagCollector | None = None,
-    ) -> MdMidConfig:
+    ) -> WenqiaoConfig:
         """Build config from dict with kebab/snake key normalization (从字典构建配置).
 
         Values of list or dict type are shallow-copied to prevent aliasing
@@ -115,7 +115,7 @@ class MdMidConfig:
             diag: Optional diagnostic collector for unknown key warnings (可选诊断收集器)
 
         Returns:
-            MdMidConfig with matched fields set, defaults for missing (匹配字段已设置)
+            WenqiaoConfig with matched fields set, defaults for missing (匹配字段已设置)
         """
         valid_fields = {f.name for f in fields(cls)}
         kwargs: dict[str, object] = {}
@@ -167,7 +167,7 @@ def resolve_config(
     east_meta: dict[str, object] | None = None,
     config_dict: dict[str, object] | None = None,
     template_dict: dict[str, object] | None = None,
-) -> MdMidConfig:
+) -> WenqiaoConfig:
     """Resolve final config by merging dict layers in priority order (按优先级合并配置).
 
     Priority (high -> low): CLI > document directives > config file > template > defaults.
@@ -181,7 +181,7 @@ def resolve_config(
         template_dict: Template file dict (模板文件字典)
 
     Returns:
-        Fully resolved MdMidConfig (完全解析的配置)
+        Fully resolved WenqiaoConfig (完全解析的配置)
     """
     # Start with defaults (从默认值开始)
     merged: dict[str, object] = _DEFAULTS.copy()
@@ -206,7 +206,7 @@ def resolve_config(
     if cli_overrides:
         merged.update(_normalize_keys(cli_overrides))
 
-    return MdMidConfig.from_dict(merged)
+    return WenqiaoConfig.from_dict(merged)
 
 
 def load_template(
@@ -218,8 +218,8 @@ def load_template(
     Template keys are a subset of config (PRD §10.3):
     documentclass, classoptions, packages, package-options, extra-preamble, bibstyle.
 
-    The key 'extra-preamble' is mapped to 'preamble' for MdMidConfig compatibility.
-    (extra-preamble 映射为 preamble 以兼容 MdMidConfig。)
+    The key 'extra-preamble' is mapped to 'preamble' for WenqiaoConfig compatibility.
+    (extra-preamble 映射为 preamble 以兼容 WenqiaoConfig。)
 
     Returns an empty dict if file does not exist or YAML parse fails.
     (文件不存在或 YAML 解析失败时返回空字典。)

@@ -11,8 +11,8 @@ from pathlib import Path
 
 import click
 
-from md_mid.diagnostic import DiagCollector
-from md_mid.nodes import (
+from wenqiao.diagnostic import DiagCollector
+from wenqiao.nodes import (
     Citation,
     CrossRef,
     Figure,
@@ -20,7 +20,7 @@ from md_mid.nodes import (
     Node,
     Table,
 )
-from md_mid.pipeline import build_config, parse_and_process, resolve_bib
+from wenqiao.pipeline import build_config, parse_and_process, resolve_bib
 
 
 @dataclass
@@ -163,7 +163,7 @@ def validate_images(
     "config_path",
     type=click.Path(exists=True, path_type=Path),
     default=None,
-    help="External config file (外部配置文件, md-mid.yaml)",
+    help="External config file (外部配置文件, wenqiao.yaml)",
 )
 @click.option(
     "--template",

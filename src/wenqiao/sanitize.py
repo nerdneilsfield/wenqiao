@@ -12,7 +12,7 @@ from __future__ import annotations
 from html import escape
 from html.parser import HTMLParser
 
-from md_mid.url_check import is_unsafe_url
+from wenqiao.url_check import is_unsafe_url
 
 # Safe HTML tags — normal and self-closing (安全 HTML 标签白名单)
 _SAFE_TAGS: frozenset[str] = frozenset(

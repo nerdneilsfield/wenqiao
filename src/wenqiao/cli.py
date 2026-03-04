@@ -1,7 +1,7 @@
-"""md-mid CLI 入口 — 支持 convert / validate / format 子命令。
+"""wenqiao CLI 入口 — 支持 convert / validate / format 子命令。
 
 CLI entry point with subcommands: convert, validate, format.
-Backward-compatible: ``md-mid file.mid.md`` defaults to ``convert``.
+Backward-compatible: ``wenqiao file.mid.md`` defaults to ``convert``.
 """
 
 from __future__ import annotations
@@ -12,17 +12,17 @@ from pathlib import Path
 
 import click
 
-from md_mid import __version__
-from md_mid.diagnostic import DiagCollector
-from md_mid.format_cmd import format_cmd
-from md_mid.pipeline import (
+from wenqiao import __version__
+from wenqiao.diagnostic import DiagCollector
+from wenqiao.format_cmd import format_cmd
+from wenqiao.pipeline import (
     build_config,
     create_renderer,
     inject_metadata,
     parse_and_process,
     resolve_bib,
 )
-from md_mid.validate import validate_cmd
+from wenqiao.validate import validate_cmd
 
 # ---------------------------------------------------------------------------
 # DefaultGroup: implicit "convert" when first arg is not a subcommand
@@ -34,11 +34,11 @@ class DefaultGroup(click.Group):
     """Click Group that falls back to a default subcommand.
 
     If the first argument is not a known subcommand and does not start with
-    ``-``, prepend ``convert`` so the old ``md-mid FILE`` invocation still
-    works.
+    ``-``, prepend ``convert`` so the single-command ``wenqiao FILE`` invocation
+    still works (implicit convert).
 
     当首个参数不是已知子命令且不以 ``-`` 开头时，自动插入 ``convert``，
-    保持旧版 ``md-mid FILE`` 调用方式兼容。
+    保持 ``wenqiao FILE`` 的隐式 convert 调用方式兼容。
     """
 
     def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
@@ -46,7 +46,7 @@ class DefaultGroup(click.Group):
 
         Routes all args to ``convert`` unless the first token is a known
         subcommand name or a group-level option (--help / --version).
-        This preserves option-first invocations like ``md-mid -o out file``.
+        This preserves option-first invocations like ``wenqiao -o out file``.
         (将所有参数路由到 convert，除非首个 token 是已知子命令或组级选项。)
         """
         if args and args[0] not in self.commands and args[0] not in ("--help", "--version"):
@@ -63,7 +63,7 @@ class DefaultGroup(click.Group):
 @click.version_option(version=__version__)
 @click.pass_context
 def cli(ctx: click.Context) -> None:
-    """md-mid: Academic Markdown intermediate format converter (学术 Markdown 中间格式转换工具)."""
+    """wenqiao (文桥): Academic Markdown writing tool (学术 Markdown 写作工具)."""
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
 
@@ -122,7 +122,7 @@ def cli(ctx: click.Context) -> None:
     "config_path",
     type=click.Path(exists=True, path_type=Path),
     default=None,
-    help="External config file (外部配置文件, md-mid.yaml)",
+    help="External config file (外部配置文件, wenqiao.yaml)",
 )
 @click.option(
     "--bibliography-mode",
@@ -238,8 +238,8 @@ def convert_cmd(
 
     # Optional AI figure generation (可选 AI 图片生成)
     if generate_figures:
-        from md_mid.genfig import run_generate_figures
-        from md_mid.genfig_openai import OpenAIFigureRunner
+        from wenqiao.genfig import run_generate_figures
+        from wenqiao.genfig_openai import OpenAIFigureRunner
 
         base_dir = Path(filename).parent if filename != "<stdin>" else Path.cwd()
         runner = OpenAIFigureRunner(config=figures_config)

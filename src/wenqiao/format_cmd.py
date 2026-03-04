@@ -12,9 +12,9 @@ from pathlib import Path
 
 import click
 
-from md_mid.diagnostic import DiagCollector
-from md_mid.markdown import MarkdownRenderer
-from md_mid.pipeline import parse_and_process
+from wenqiao.diagnostic import DiagCollector
+from wenqiao.markdown import MarkdownRenderer
+from wenqiao.pipeline import parse_and_process
 
 
 @click.command("format")

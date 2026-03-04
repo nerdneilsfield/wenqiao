@@ -9,9 +9,9 @@ import html as _html_lib
 import re
 from typing import cast
 
-from md_mid.ai_meta import render_ai_details_html
-from md_mid.diagnostic import DiagCollector
-from md_mid.nodes import (
+from wenqiao.ai_meta import render_ai_details_html
+from wenqiao.diagnostic import DiagCollector
+from wenqiao.nodes import (
     Citation,
     CodeBlock,
     CodeInline,
@@ -32,7 +32,7 @@ from md_mid.nodes import (
     Table,
     Text,
 )
-from md_mid.url_check import is_unsafe_url
+from wenqiao.url_check import is_unsafe_url
 
 
 def _esc(text: str) -> str:
@@ -364,7 +364,7 @@ class HTMLRenderer:
         rb = cast(RawBlock, node)
         if rb.kind == "html":
             # Sanitize HTML through allowlist (通过白名单清洗 HTML)
-            from md_mid.sanitize import sanitize_html
+            from wenqiao.sanitize import sanitize_html
 
             return sanitize_html(rb.content) + "\n"
         # LaTeX raw block → collapsible fold (LaTeX 块折叠显示)

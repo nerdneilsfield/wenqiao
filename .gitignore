@@ -43,4 +43,4 @@ __pycache__/
 .claude/review-loop.log
 reviews/
 *.pyc
-src/md_mid/__pycache__/__init__.cpython-314.pyc
+src/wenqiao/__pycache__/__init__.cpython-314.pyc

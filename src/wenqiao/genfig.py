@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from md_mid.nodes import Document, Figure, Image, Node
+from wenqiao.nodes import Document, Figure, Image, Node
 
 
 @dataclass

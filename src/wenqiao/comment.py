@@ -16,9 +16,9 @@ from typing import cast
 
 from ruamel.yaml import YAML
 
-from md_mid.comment_env import _process_environments
-from md_mid.diagnostic import DiagCollector, Position
-from md_mid.nodes import (
+from wenqiao.comment_env import _process_environments
+from wenqiao.diagnostic import DiagCollector, Position
+from wenqiao.nodes import (
     Document,
     Image,
     MathBlock,
