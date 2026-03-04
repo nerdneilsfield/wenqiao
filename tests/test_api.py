@@ -314,3 +314,17 @@ def test_preset_kwarg_overrides_preset_directive() -> None:
     result = api_convert("<!-- preset: zh -->\n\n# Hello\n", preset="en")
     assert "article" in result.text
     assert "ctexart" not in result.text
+
+
+def test_preset_unknown_raises_early() -> None:
+    """convert() with unknown preset should raise ValueError before parsing (未知预设提前报错).
+
+    Validates that the error is raised with a clear message listing valid presets.
+    (验证错误提前抛出，消息中列出合法预设名。)
+    """
+    import pytest
+
+    from wenqiao.api import convert as api_convert
+
+    with pytest.raises(ValueError, match="Unknown preset"):
+        api_convert("# Hello\n", preset="nonexistent")

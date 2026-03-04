@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from wenqiao.config import WenqiaoConfig
+from wenqiao.config import _PRESETS, WenqiaoConfig
 from wenqiao.diagnostic import DiagCollector, Diagnostic
 from wenqiao.nodes import Document
 from wenqiao.pipeline import (
@@ -102,7 +102,9 @@ def convert(
         template: Template YAML file path (模板 YAML 文件路径)
         bib: .bib file path / raw text / pre-parsed dict (参考文献来源)
         strict: Raise ConversionError on diagnostic errors (有诊断错误时抛出异常)
-        preset: Built-in preset name — "zh" / "en" (内置预设名称)
+        preset: Built-in preset name — "zh" / "en" (内置预设名称).
+            Ignored when config is a pre-built WenqiaoConfig.
+            (当 config 为预构建配置时忽略此参数。)
 
     Returns:
         ConvertResult with rendered text and metadata (包含渲染文本和元数据的结果)
@@ -110,7 +112,15 @@ def convert(
     Raises:
         ConversionError: If strict=True and diagnostics contain errors (严格模式下有错误时)
         ValueError: If target is not supported (目标格式不支持时)
+        ValueError: If preset is not a known preset name (预设名称无效时)
     """
+    # Validate preset early to give a clear error before any work starts (提前校验预设名)
+    if preset is not None and preset not in _PRESETS:
+        raise ValueError(
+            f"Unknown preset {preset!r}; available: {list(_PRESETS)}"
+            f" (未知预设 {preset!r}；可用预设: {list(_PRESETS)})"
+        )
+
     # Validate explicit target early (提前校验显式目标格式)
     if target is not None and target not in ("latex", "markdown", "html"):
         raise ValueError(
