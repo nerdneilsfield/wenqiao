@@ -59,11 +59,12 @@ def build_config(
     config_path: Path | None = None,
     template_path: Path | None = None,
     pre_built: WenqiaoConfig | None = None,
+    preset_name: str | None = None,
     diag: DiagCollector | None = None,
 ) -> WenqiaoConfig:
     """Unified config resolution (统一配置解析).
 
-    Handles the full priority chain: CLI > doc > config file > template > defaults.
+    Handles the full priority chain: CLI > doc > config file > template > preset > defaults.
     If pre_built is provided, returns it directly (short-circuit).
     (如果提供了 pre_built，直接返回。)
 
@@ -73,6 +74,7 @@ def build_config(
         config_path: External config file path (外部配置文件路径)
         template_path: Template YAML file path (模板 YAML 文件路径)
         pre_built: Pre-built WenqiaoConfig to use directly (直接使用的预构建配置)
+        preset_name: Explicit preset name; overrides document directive (显式预设名，优先于文档指令)
         diag: Diagnostic collector for config warnings (配置警告的诊断收集器)
 
     Returns:
@@ -80,6 +82,13 @@ def build_config(
     """
     if pre_built is not None:
         return pre_built
+
+    # Preset: explicit arg takes priority over document directive (显式参数优先于文档指令)
+    effective_preset = preset_name
+    if effective_preset is None:
+        doc_preset = east_meta.get("preset")
+        if isinstance(doc_preset, str):
+            effective_preset = doc_preset
 
     tpl_dict = load_template(template_path, diag=diag) if template_path else None
     cfg_dict = load_config_file(config_path, diag=diag) if config_path else None
@@ -89,6 +98,7 @@ def build_config(
         east_meta=east_meta,
         config_dict=cfg_dict,
         template_dict=tpl_dict,
+        preset_name=effective_preset,
     )
 
 

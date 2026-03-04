@@ -285,3 +285,18 @@ def test_include_tex_blocked_for_string_source() -> None:
     # Should NOT produce an error — include-tex is simply skipped (不应报错)
     result = convert(md)
     assert result.text  # Renders normally (正常渲染)
+
+
+# -- Preset directive integration tests (预设指令集成测试) ----------------------
+
+
+def test_preset_directive_zh_sets_ctexart() -> None:
+    """Document with <!-- preset: zh --> should produce ctexart class (文档预设 zh 生效).
+
+    Integration test: preset directive flows through pipeline to LaTeX output.
+    (集成测试：预设指令通过管线流至 LaTeX 输出。)
+    """
+    from wenqiao.api import convert as api_convert
+
+    result = api_convert("<!-- preset: zh -->\n\n# Hello\n")
+    assert "ctexart" in result.text
