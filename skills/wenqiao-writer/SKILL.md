@@ -25,6 +25,7 @@ HEADER (before first content)        ATTACH-UP (after content node)
 <!-- classoptions: [12pt, a4paper] --> <!-- caption: My figure -->
 <!-- packages: [amsmath, ctex] -->     <!-- width: 0.8\textwidth -->
 <!-- package-options: {geometry: "margin=1in"} --> <!-- placement: htbp -->
+<!-- preset: zh -->                   (zh | en)
 <!-- bibliography: refs.bib -->       <!-- centering: true -->
 <!-- bibstyle: IEEEtran -->           <!-- options: ... -->
 <!-- title: ... -->                   <!-- args: ... -->
@@ -186,7 +187,12 @@ Common: `theorem`, `lemma`, `proof`, `definition`, `corollary`, `remark`, `examp
 
 Environment-internal directives (`label`, `caption`, `options`, `args`) can go inside or after.
 
-### 9. Raw LaTeX — Only for macros/commands
+### 9. Raw LaTeX — For complex content not expressible in Markdown
+
+Use `<!-- begin: raw --> ... <!-- end: raw -->` for:
+- **Complex tables**: merged cells, `multicolumn`, `booktabs`, `longtable`
+- **Custom macros**: `\newcommand`, `\DeclareMathOperator`
+- **Arbitrary LaTeX environments** not otherwise supported
 
 ```markdown
 <!-- begin: raw -->
@@ -194,6 +200,28 @@ Environment-internal directives (`label`, `caption`, `options`, `args`) can go i
 \DeclareMathOperator{\argmin}{arg\,min}
 <!-- end: raw -->
 ```
+
+**Complex table example:**
+
+```markdown
+<!-- begin: raw -->
+\begin{table}[htbp]
+\centering
+\caption{Multi-column results}
+\label{tab:complex}
+\begin{tabular}{lcc}
+\hline
+\multicolumn{2}{c}{Performance} & Score \\
+\hline
+ICP   & 85.3 & RMSE \\
+Ours  & 93.1 & RMSE \\
+\hline
+\end{tabular}
+\end{table}
+<!-- end: raw -->
+```
+
+Raw blocks are passed through verbatim to LaTeX; they are transparent in HTML/Markdown output.
 
 Use sparingly. Prefer Markdown constructs over raw LaTeX for portability.
 
