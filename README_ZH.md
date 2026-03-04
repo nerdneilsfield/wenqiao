@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/Python-≥3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-425%2B%20passed-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-474%20passed-brightgreen)](tests/)
 [![mypy](https://img.shields.io/badge/type%20check-mypy%20strict-blue)](https://mypy-lang.org/)
 [![Ruff](https://img.shields.io/badge/linter-ruff-261230?logo=ruff)](https://docs.astral.sh/ruff/)
 [![uv](https://img.shields.io/badge/pkg-uv-DE5FE9?logo=uv)](https://docs.astral.sh/uv/)
@@ -195,6 +195,308 @@ md-mid 使用子命令：`convert`（默认）、`validate` 和 `format`。
   -o, --output PATH  输出路径（默认: 覆盖输入文件）
   --check            仅检查，未格式化时退出码 1
   --diff             显示统一差异
+```
+
+</details>
+
+## Python API
+
+md-mid 提供了简洁的 Python API，可在构建系统、Jupyter notebook、Web 服务和自定义工具中
+程序化使用。所有公共符号均可直接从 `md_mid` 包导入。
+
+```python
+from md_mid import convert, validate_text, format_text, parse_document
+from md_mid import ConvertResult, ConversionError, MdMidConfig, Diagnostic, Document
+```
+
+### `convert()` — 转换学术 Markdown
+
+主要入口函数。将 Markdown 源文件转换为 LaTeX、HTML 或富 Markdown。
+
+```python
+from md_mid import convert
+
+# 基本用法：字符串 → LaTeX
+result = convert("# 绪论\n\n你好世界。\n")
+print(result.text)       # \documentclass[12pt,a4paper]{article} ...
+print(result.config)     # MdMidConfig(target='latex', mode='full', ...)
+print(result.document)   # Document(children=[Heading(...), Paragraph(...)])
+print(result.diagnostics)  # []（无警告/错误时为空列表）
+```
+
+**参数：**
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `source` | `str \| Path` | *必填* | Markdown 文本字符串或文件路径 |
+| `target` | `str` | `"latex"` | 输出格式：`"latex"` / `"markdown"` / `"html"` |
+| `mode` | `str \| None` | `None` | 输出范围：`"full"` / `"body"` / `"fragment"` |
+| `locale` | `str \| None` | `None` | 标签语言：`"zh"` / `"en"` |
+| `config` | `MdMidConfig \| dict \| None` | `None` | 预构建配置对象或覆盖字典 |
+| `template` | `Path \| None` | `None` | 模板 YAML 文件路径 |
+| `bib` | `Path \| str \| dict \| None` | `None` | `.bib` 文件路径、原始文本或预解析字典 |
+| `strict` | `bool` | `False` | 有诊断错误时抛出 `ConversionError` |
+
+**返回：** `ConvertResult` — 冻结 dataclass，含 `.text`、`.diagnostics`、`.config`、`.document` 属性。
+
+#### 输出目标
+
+```python
+# LaTeX（默认）
+latex_result = convert(source)
+
+# 富 Markdown，带 BibTeX 脚注
+md_result = convert(source, target="markdown", bib=Path("refs.bib"))
+
+# 自包含 HTML，带 MathJax
+html_result = convert(source, target="html")
+```
+
+#### 输出模式
+
+```python
+# 完整文档，含导言区（默认）
+full = convert(source, mode="full")
+
+# 仅正文 — 无 \documentclass 或 \begin{document}
+body = convert(source, mode="body")
+
+# 片段 — 裸内容，标题降级
+fragment = convert(source, mode="fragment")
+```
+
+#### 文件路径输入
+
+```python
+from pathlib import Path
+
+# 直接从 .mid.md 文件读取
+result = convert(Path("paper.mid.md"), target="html")
+```
+
+#### 配置
+
+三种传入配置的方式：
+
+```python
+from md_mid import convert, MdMidConfig
+from pathlib import Path
+
+# 1. 字典覆盖 — 与默认值合并
+result = convert(source, config={
+    "documentclass": "report",
+    "classoptions": ["11pt", "letterpaper"],
+    "locale": "en",
+})
+
+# 2. 预构建 MdMidConfig — 直接使用，不合并
+cfg = MdMidConfig(mode="body", locale="en", documentclass="IEEEtran")
+result = convert(source, config=cfg)
+
+# 3. 模板 YAML 文件 — 在模板层合并
+result = convert(source, template=Path("templates/ieee.yaml"))
+```
+
+#### 参考文献
+
+三种提供参考文献数据的方式：
+
+```python
+from pathlib import Path
+
+# .bib 文件路径
+result = convert(md, target="markdown", bib=Path("refs.bib"))
+
+# 原始 .bib 文本内容
+bib_text = '@article{wang2024, author={Wang}, title={Test}, year={2024}}'
+result = convert(md, target="markdown", bib=bib_text)
+
+# 预解析字典（引用键 → 显示字符串）
+result = convert(md, target="markdown", bib={"wang2024": "Wang. Test. 2024."})
+```
+
+#### 严格模式
+
+```python
+from md_mid import convert, ConversionError
+
+try:
+    result = convert(source, strict=True)
+except ConversionError as e:
+    print(f"转换失败: {e}")
+    for diag in e.diagnostics:
+        print(f"  {diag}")
+```
+
+### `validate_text()` — 验证文档
+
+运行 EAST 遍历器和验证器，检查引用、交叉引用等。返回 `Diagnostic` 对象列表。
+
+```python
+from md_mid import validate_text
+
+# 基本验证
+diagnostics = validate_text("参见 [ref](cite:missing_key)。\n", bib={})
+for d in diagnostics:
+    print(d)  # [WARNING] <string> - Citation key 'missing_key' not found ...
+
+# 使用 .bib 文件
+diagnostics = validate_text(Path("paper.mid.md"), bib=Path("refs.bib"))
+
+# 严格模式 — 有错误时抛出 ConversionError
+from md_mid import ConversionError
+try:
+    validate_text(source, strict=True)
+except ConversionError as e:
+    print(f"验证失败，共 {len(e.diagnostics)} 个问题")
+```
+
+### `format_text()` — 规范化格式
+
+往返规范化：解析 → 重新渲染为 Markdown。幂等操作 — 对已格式化的文档再次
+格式化会返回相同文本。
+
+```python
+from md_mid import format_text
+
+formatted = format_text("# 你好\n\n世界。\n")
+print(formatted)
+
+# 也支持文件路径
+formatted = format_text(Path("paper.mid.md"))
+
+# 幂等性检查
+assert format_text(formatted) == formatted
+```
+
+### `parse_document()` — 低级 EAST 访问
+
+返回原始 EAST `Document` 树，用于自定义处理。运行解析 + 注释指令处理，
+但不执行渲染。
+
+```python
+from md_mid import parse_document, Document
+from md_mid.nodes import Heading, Paragraph
+
+doc = parse_document("# 你好\n\n世界。\n")
+assert isinstance(doc, Document)
+
+# 检查树结构
+for child in doc.children:
+    print(f"{child.type}: {child}")
+
+# 访问文档级指令元数据
+doc = parse_document("""
+<!-- title: 我的论文 -->
+<!-- author: 作者 -->
+
+# 绪论
+""")
+print(doc.metadata)  # {'title': '我的论文', 'author': '作者'}
+```
+
+### `ConvertResult` — 结果对象
+
+```python
+@dataclass(frozen=True)
+class ConvertResult:
+    text: str                    # 渲染后的输出字符串
+    diagnostics: list[Diagnostic]  # 警告和错误
+    config: MdMidConfig          # 解析后的配置
+    document: Document           # EAST 树（用于检查）
+```
+
+### `ConversionError` — 错误类型
+
+当 `strict=True` 且诊断信息包含错误时抛出。
+
+```python
+class ConversionError(Exception):
+    diagnostics: list[Diagnostic]  # 所有诊断信息
+```
+
+### 集成示例
+
+<details>
+<summary><b>Jupyter Notebook</b></summary>
+
+```python
+from md_mid import convert
+from IPython.display import HTML
+
+source = Path("paper.mid.md").read_text()
+result = convert(source, target="html", mode="body")
+HTML(result.text)
+```
+
+</details>
+
+<details>
+<summary><b>构建系统（Makefile / 脚本）</b></summary>
+
+```python
+#!/usr/bin/env python3
+"""批量转换所有 .mid.md 文件为 LaTeX。"""
+from pathlib import Path
+from md_mid import convert
+
+for md_file in Path("chapters/").glob("*.mid.md"):
+    result = convert(md_file, template=Path("templates/ieee.yaml"))
+    out = md_file.with_suffix(".tex")
+    out.write_text(result.text, encoding="utf-8")
+    print(f"{md_file} → {out}（{len(result.diagnostics)} 条诊断）")
+```
+
+</details>
+
+<details>
+<summary><b>Web 服务（FastAPI）</b></summary>
+
+```python
+from fastapi import FastAPI, HTTPException
+from md_mid import convert, ConversionError
+
+app = FastAPI()
+
+@app.post("/convert")
+def convert_markdown(source: str, target: str = "latex"):
+    try:
+        result = convert(source, target=target, strict=True)
+        return {"text": result.text, "diagnostics": [str(d) for d in result.diagnostics]}
+    except ConversionError as e:
+        raise HTTPException(400, detail=[str(d) for d in e.diagnostics])
+```
+
+</details>
+
+<details>
+<summary><b>自定义 EAST 处理</b></summary>
+
+```python
+from md_mid import parse_document
+from md_mid.nodes import Heading, Citation
+
+doc = parse_document(Path("paper.mid.md"))
+
+# 提取所有标题
+headings = [
+    (child.level, child)
+    for child in doc.children
+    if isinstance(child, Heading)
+]
+
+# 收集所有引用键
+def collect_cites(node, keys=None):
+    if keys is None:
+        keys = set()
+    if isinstance(node, Citation):
+        keys.update(node.keys)
+    for child in node.children:
+        collect_cites(child, keys)
+    return keys
+
+all_keys = collect_cites(doc)
+print(f"共找到 {len(all_keys)} 个唯一引用键")
 ```
 
 </details>
@@ -554,7 +856,9 @@ md-mid paper.mid.md --template templates/ieee.yaml -o paper.tex
 
 ```
 academic-md2latex/
-├── src/md_mid/              # 源代码（16 个模块）
+├── src/md_mid/              # 源代码（17 个模块）
+│   ├── __init__.py          #   公共 API 重导出
+│   ├── api.py               #   公共 Python API（convert、validate、format）
 │   ├── cli.py               #   Click CLI 入口
 │   ├── parser.py            #   Markdown → EAST 解析器
 │   ├── nodes.py             #   EAST 节点定义（32 种类型）
@@ -570,7 +874,7 @@ academic-md2latex/
 │   ├── url_check.py         #   URL 安全验证
 │   ├── ai_meta.py           #   共享 AI 元数据渲染
 │   └── diagnostic.py        #   错误/警告诊断
-├── tests/                   # 测试套件（16 个文件，425+ 测试）
+├── tests/                   # 测试套件（17 个文件，474 个测试）
 │   ├── fixtures/            #   测试用 .mid.md 文档
 │   └── conftest.py          #   共享 pytest fixtures
 ├── templates/               # LaTeX 投稿模板 (ieee.yaml, ...)
@@ -653,11 +957,12 @@ def render_figure(self, node: Node) -> str:
 测试文件与源代码模块一一对应（`parser.py` → `test_parser.py`）。
 
 ```bash
-make test                    # 运行全部 425+ 测试
+make test                    # 运行全部 474 个测试
 ```
 
 | 测试文件 | 覆盖内容 |
 |----------|----------|
+| `test_api.py` | 公共 Python API（convert、validate、format、parse） |
 | `test_parser.py` | Markdown 解析、节点创建 |
 | `test_nodes.py` | EAST 序列化、类型属性 |
 | `test_latex.py` | LaTeX 渲染（标题、公式、引用、表格、图片） |

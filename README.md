@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/Python-≥3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-425%2B%20passed-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-474%20passed-brightgreen)](tests/)
 [![mypy](https://img.shields.io/badge/type%20check-mypy%20strict-blue)](https://mypy-lang.org/)
 [![Ruff](https://img.shields.io/badge/linter-ruff-261230?logo=ruff)](https://docs.astral.sh/ruff/)
 [![uv](https://img.shields.io/badge/pkg-uv-DE5FE9?logo=uv)](https://docs.astral.sh/uv/)
@@ -197,6 +197,310 @@ Options:
   -o, --output PATH  Output path (default: overwrite input)
   --check            Check only, exit 1 if unformatted
   --diff             Show unified diff of changes
+```
+
+</details>
+
+## Python API
+
+md-mid exposes a clean Python API for programmatic use in build systems, Jupyter
+notebooks, web services, and custom tooling. All public symbols are available
+directly from the `md_mid` package.
+
+```python
+from md_mid import convert, validate_text, format_text, parse_document
+from md_mid import ConvertResult, ConversionError, MdMidConfig, Diagnostic, Document
+```
+
+### `convert()` — Convert Academic Markdown
+
+The primary entry point. Converts Markdown source to LaTeX, HTML, or rich Markdown.
+
+```python
+from md_mid import convert
+
+# Basic: string → LaTeX
+result = convert("# Introduction\n\nHello world.\n")
+print(result.text)       # \documentclass[12pt,a4paper]{article} ...
+print(result.config)     # MdMidConfig(target='latex', mode='full', ...)
+print(result.document)   # Document(children=[Heading(...), Paragraph(...)])
+print(result.diagnostics)  # [] (empty if no warnings/errors)
+```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `source` | `str \| Path` | *required* | Markdown text string or file path |
+| `target` | `str` | `"latex"` | Output format: `"latex"` / `"markdown"` / `"html"` |
+| `mode` | `str \| None` | `None` | Output scope: `"full"` / `"body"` / `"fragment"` |
+| `locale` | `str \| None` | `None` | Label language: `"zh"` / `"en"` |
+| `config` | `MdMidConfig \| dict \| None` | `None` | Pre-built config object or overrides dict |
+| `template` | `Path \| None` | `None` | Template YAML file path |
+| `bib` | `Path \| str \| dict \| None` | `None` | `.bib` file path, raw text, or pre-parsed dict |
+| `strict` | `bool` | `False` | Raise `ConversionError` on diagnostic errors |
+
+**Returns:** `ConvertResult` — a frozen dataclass with `.text`, `.diagnostics`, `.config`, `.document`.
+
+#### Output targets
+
+```python
+# LaTeX (default)
+latex_result = convert(source)
+
+# Rich Markdown with BibTeX footnotes
+md_result = convert(source, target="markdown", bib=Path("refs.bib"))
+
+# Self-contained HTML with MathJax
+html_result = convert(source, target="html")
+```
+
+#### Output modes
+
+```python
+# Full document with preamble (default)
+full = convert(source, mode="full")
+
+# Body only — no \documentclass or \begin{document}
+body = convert(source, mode="body")
+
+# Fragment — bare content, headings degraded
+fragment = convert(source, mode="fragment")
+```
+
+#### File path input
+
+```python
+from pathlib import Path
+
+# Read directly from a .mid.md file
+result = convert(Path("paper.mid.md"), target="html")
+```
+
+#### Configuration
+
+Three ways to pass configuration:
+
+```python
+from md_mid import convert, MdMidConfig
+from pathlib import Path
+
+# 1. Dict overrides — merged with defaults
+result = convert(source, config={
+    "documentclass": "report",
+    "classoptions": ["11pt", "letterpaper"],
+    "locale": "en",
+})
+
+# 2. Pre-built MdMidConfig — used as-is, no merging
+cfg = MdMidConfig(mode="body", locale="en", documentclass="IEEEtran")
+result = convert(source, config=cfg)
+
+# 3. Template YAML file — merged at the template layer
+result = convert(source, template=Path("templates/ieee.yaml"))
+```
+
+#### Bibliography
+
+Three ways to provide bibliography data:
+
+```python
+from pathlib import Path
+
+# .bib file path
+result = convert(md, target="markdown", bib=Path("refs.bib"))
+
+# Raw .bib text content
+bib_text = '@article{wang2024, author={Wang}, title={Test}, year={2024}}'
+result = convert(md, target="markdown", bib=bib_text)
+
+# Pre-parsed dict (cite_key → display string)
+result = convert(md, target="markdown", bib={"wang2024": "Wang. Test. 2024."})
+```
+
+#### Strict mode
+
+```python
+from md_mid import convert, ConversionError
+
+try:
+    result = convert(source, strict=True)
+except ConversionError as e:
+    print(f"Conversion failed: {e}")
+    for diag in e.diagnostics:
+        print(f"  {diag}")
+```
+
+### `validate_text()` — Validate Document
+
+Runs the EAST walker and validators to check citations, cross-references, and more.
+Returns a list of `Diagnostic` objects.
+
+```python
+from md_mid import validate_text
+
+# Basic validation
+diagnostics = validate_text("See [ref](cite:missing_key).\n", bib={})
+for d in diagnostics:
+    print(d)  # [WARNING] <string> - Citation key 'missing_key' not found ...
+
+# With .bib file
+diagnostics = validate_text(Path("paper.mid.md"), bib=Path("refs.bib"))
+
+# Strict mode — raises ConversionError on any errors
+from md_mid import ConversionError
+try:
+    validate_text(source, strict=True)
+except ConversionError as e:
+    print(f"Validation failed with {len(e.diagnostics)} issues")
+```
+
+### `format_text()` — Normalize Formatting
+
+Round-trip normalization: parse → render back as Markdown. Idempotent — formatting
+an already-formatted document returns the same text.
+
+```python
+from md_mid import format_text
+
+formatted = format_text("# Hello\n\nWorld.\n")
+print(formatted)
+
+# Works with file paths too
+formatted = format_text(Path("paper.mid.md"))
+
+# Idempotent check
+assert format_text(formatted) == formatted
+```
+
+### `parse_document()` — Low-level EAST Access
+
+Returns the raw EAST `Document` tree for custom processing. Runs parse +
+comment directive processing but no rendering.
+
+```python
+from md_mid import parse_document, Document
+from md_mid.nodes import Heading, Paragraph
+
+doc = parse_document("# Hello\n\nWorld.\n")
+assert isinstance(doc, Document)
+
+# Inspect the tree
+for child in doc.children:
+    print(f"{child.type}: {child}")
+
+# Access document-level metadata from directives
+doc = parse_document("""
+<!-- title: My Paper -->
+<!-- author: Author -->
+
+# Introduction
+""")
+print(doc.metadata)  # {'title': 'My Paper', 'author': 'Author'}
+```
+
+### `ConvertResult` — Result Object
+
+```python
+@dataclass(frozen=True)
+class ConvertResult:
+    text: str                    # Rendered output string
+    diagnostics: list[Diagnostic]  # Warnings and errors
+    config: MdMidConfig          # Resolved configuration
+    document: Document           # EAST tree (for inspection)
+```
+
+### `ConversionError` — Error Type
+
+Raised when `strict=True` and diagnostics contain errors.
+
+```python
+class ConversionError(Exception):
+    diagnostics: list[Diagnostic]  # All diagnostic messages
+```
+
+### Integration Examples
+
+<details>
+<summary><b>Jupyter Notebook</b></summary>
+
+```python
+from md_mid import convert
+from IPython.display import HTML
+
+source = Path("paper.mid.md").read_text()
+result = convert(source, target="html", mode="body")
+HTML(result.text)
+```
+
+</details>
+
+<details>
+<summary><b>Build system (Makefile / script)</b></summary>
+
+```python
+#!/usr/bin/env python3
+"""Batch convert all .mid.md files to LaTeX."""
+from pathlib import Path
+from md_mid import convert
+
+for md_file in Path("chapters/").glob("*.mid.md"):
+    result = convert(md_file, template=Path("templates/ieee.yaml"))
+    out = md_file.with_suffix(".tex")
+    out.write_text(result.text, encoding="utf-8")
+    print(f"{md_file} → {out} ({len(result.diagnostics)} diagnostics)")
+```
+
+</details>
+
+<details>
+<summary><b>Web service (FastAPI)</b></summary>
+
+```python
+from fastapi import FastAPI, HTTPException
+from md_mid import convert, ConversionError
+
+app = FastAPI()
+
+@app.post("/convert")
+def convert_markdown(source: str, target: str = "latex"):
+    try:
+        result = convert(source, target=target, strict=True)
+        return {"text": result.text, "diagnostics": [str(d) for d in result.diagnostics]}
+    except ConversionError as e:
+        raise HTTPException(400, detail=[str(d) for d in e.diagnostics])
+```
+
+</details>
+
+<details>
+<summary><b>Custom EAST processing</b></summary>
+
+```python
+from md_mid import parse_document
+from md_mid.nodes import Heading, Citation
+
+doc = parse_document(Path("paper.mid.md"))
+
+# Extract all headings
+headings = [
+    (child.level, child)
+    for child in doc.children
+    if isinstance(child, Heading)
+]
+
+# Collect all citation keys
+def collect_cites(node, keys=None):
+    if keys is None:
+        keys = set()
+    if isinstance(node, Citation):
+        keys.update(node.keys)
+    for child in node.children:
+        collect_cites(child, keys)
+    return keys
+
+all_keys = collect_cites(doc)
+print(f"Found {len(all_keys)} unique citation keys")
 ```
 
 </details>
@@ -557,7 +861,9 @@ md-mid paper.mid.md --template templates/ieee.yaml -o paper.tex
 
 ```
 academic-md2latex/
-├── src/md_mid/              # Source code (16 modules)
+├── src/md_mid/              # Source code (17 modules)
+│   ├── __init__.py          #   Public API re-exports
+│   ├── api.py               #   Public Python API (convert, validate, format)
 │   ├── cli.py               #   Click CLI entry point
 │   ├── parser.py            #   Markdown → EAST parser
 │   ├── nodes.py             #   EAST node definitions (32 types)
@@ -573,7 +879,7 @@ academic-md2latex/
 │   ├── url_check.py         #   URL safety validation
 │   ├── ai_meta.py           #   Shared AI metadata rendering
 │   └── diagnostic.py        #   Error/warning diagnostics
-├── tests/                   # Test suite (16 files, 425+ tests)
+├── tests/                   # Test suite (17 files, 474 tests)
 │   ├── fixtures/            #   Test .mid.md documents
 │   └── conftest.py          #   Shared pytest fixtures
 ├── templates/               # LaTeX venue templates (ieee.yaml, ...)
@@ -656,11 +962,12 @@ def render_figure(self, node: Node) -> str:
 Tests mirror source modules one-to-one (`parser.py` → `test_parser.py`).
 
 ```bash
-make test                    # Run all 425+ tests
+make test                    # Run all 474 tests
 ```
 
 | Test file | Covers |
 |-----------|--------|
+| `test_api.py` | Public Python API (convert, validate, format, parse) |
 | `test_parser.py` | Markdown parsing, node creation |
 | `test_nodes.py` | EAST serialization, type properties |
 | `test_latex.py` | LaTeX rendering (headings, math, citations, tables, figures) |
