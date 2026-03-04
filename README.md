@@ -556,6 +556,15 @@ These go at the top of your `.mid.md` file and control the LaTeX preamble:
 -->
 ```
 
+**`package-options`** passes options to individual packages:
+
+```markdown
+<!-- packages: [amsmath, graphicx, geometry] -->
+<!-- package-options: {geometry: "margin=1in,top=2cm"} -->
+```
+
+This generates `\usepackage[margin=1in,top=2cm]{geometry}`. The value is passed verbatim into `\usepackage[...]{pkg}`.
+
 <details>
 <summary><b>Generated LaTeX preamble</b></summary>
 
@@ -732,6 +741,28 @@ Ours & 1.9 & 8 & FPGA \\
 ```
 
 </details>
+
+**Complex tables** (merged cells, `booktabs`, `multicolumn`) use a raw LaTeX passthrough block:
+
+```markdown
+<!-- begin: raw -->
+\begin{table}[htbp]
+\centering
+\caption{Multi-column results}
+\label{tab:complex}
+\begin{tabular}{lcc}
+\hline
+\multicolumn{2}{c}{Performance} & Score \\
+\hline
+ICP   & 85.3 & RMSE \\
+Ours  & 93.1 & RMSE \\
+\hline
+\end{tabular}
+\end{table}
+<!-- end: raw -->
+```
+
+Add `booktabs` to your packages list to use `\toprule`, `\midrule`, `\bottomrule`.
 
 ### Math
 
@@ -1052,6 +1083,35 @@ skill. The skill teaches Claude:
 > Write a `.mid.md` draft for a paper about point cloud registration using FPGA
 > acceleration. Include an abstract, 3 sections, a comparison table, and 2 figures
 > with AI generation prompts.
+
+## Built-in Presets
+
+Presets provide a one-line starting configuration for common document types:
+
+```markdown
+<!-- preset: zh -->
+<!-- title: 我的论文 -->
+```
+
+| Preset | `documentclass` | `locale` | Use case |
+|--------|-----------------|----------|----------|
+| `zh`   | `ctexart`       | `zh`     | Chinese academic paper — compile with XeLaTeX |
+| `en`   | `article`       | `en`     | Standard English paper |
+
+All document directives override the preset:
+
+```markdown
+<!-- preset: zh -->
+<!-- documentclass: IEEEtran -->   <!-- overrides ctexart -->
+```
+
+**Via CLI:**
+
+```bash
+wenqiao paper.mid.md --preset zh -o paper.tex
+```
+
+**Priority chain:** `CLI > directives > config file > template > preset > defaults`
 
 ## Contributing
 
