@@ -67,6 +67,8 @@ class MarkdownIndex:
 
     # 按出现顺序排列的唯一引用键 (ordered unique citation keys)
     cite_keys: list[str] = field(default_factory=list)
+    # O(1) 去重用集合 (O(1) dedup set for cite_keys)
+    _cite_key_set: set[str] = field(default_factory=set)
 
 
 # 标签本地化 (Label localization)
@@ -162,7 +164,8 @@ class MarkdownRenderer:
         """递归收集引用键 (Recursively collect citation keys)."""
         if isinstance(node, Citation):
             for key in node.keys:
-                if key not in index.cite_keys:
+                if key not in index._cite_key_set:
+                    index._cite_key_set.add(key)
                     index.cite_keys.append(key)
         for child in node.children:
             self._index_node(child, index)
