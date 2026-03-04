@@ -92,6 +92,13 @@ class TestCollectJobs:
         assert jobs[0].model == "midjourney-v6"
         assert jobs[0].params == {"seed": 42}
 
+    def test_empty_src_skipped(self) -> None:
+        """Figure with empty src is skipped (空 src 的 Figure 被跳过)."""
+        fig = _fig("", {"generated": True, "prompt": "sky"})
+        d = Document(children=[fig])
+        jobs = collect_jobs(d, base_dir=Path("/tmp"))
+        assert len(jobs) == 0
+
     def test_path_traversal_skipped(self, tmp_path: Path) -> None:
         """src with ../ that escapes base_dir is skipped (路径穿越被跳过)."""
         fig = _fig("../../etc/passwd", {"generated": True, "prompt": "sky"})
@@ -176,6 +183,22 @@ class TestGenerateFigureJob:
         mock_runner = MagicMock()
         mock_runner.generate_image.side_effect = RuntimeError("network error")
 
+        ok = generate_figure_job(job, runner=mock_runner, config=None)
+        assert ok is False
+
+    def test_directory_not_counted_as_success(self, tmp_path: Path) -> None:
+        """Runner returning 0 but output_path is directory -> False (输出路径为目录视为失败)."""
+        sub = tmp_path / "out_dir"
+        sub.mkdir()
+        job = FigureJob(
+            src="out_dir",
+            output_path=sub,
+            prompt="sky",
+            model=None,
+            params=None,
+        )
+        mock_runner = MagicMock()
+        mock_runner.generate_image.return_value = 0
         ok = generate_figure_job(job, runner=mock_runner, config=None)
         assert ok is False
 

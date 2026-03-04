@@ -449,3 +449,26 @@ def test_generate_figures_flag_no_runner_exits(tmp_path: Path) -> None:
     assert result.exit_code != 0
     # Should show friendly error, not a raw traceback (应显示友好报错，非原始 traceback)
     assert "Runner load failed" in (result.output or "")
+
+
+# ── P1-1: TypeError from resolve_config() ─────────────────────────────────────
+
+
+def test_bad_config_type_shows_friendly_error(tmp_path: Path) -> None:
+    """Config with wrong types (e.g. classoptions: 12) produces friendly error.
+
+    配置类型错误（如 classoptions: 12）时输出友好错误信息。
+    """
+    cfg = tmp_path / "md-mid.yaml"
+    # classoptions should be a list, not an integer (classoptions 应为列表而非整数)
+    cfg.write_text("classoptions: 12\n")
+    src = tmp_path / "t.mid.md"
+    src.write_text("# Hello\n\nWorld.\n")
+    out = tmp_path / "out.tex"
+    result = CliRunner().invoke(
+        main, [str(src), "-o", str(out), "--config", str(cfg)]
+    )
+    # Should exit non-zero (应退出非零)
+    assert result.exit_code != 0
+    # Should show friendly "Configuration error" message (应显示友好配置错误信息)
+    assert "Configuration error" in (result.output or "")

@@ -327,3 +327,27 @@ def test_include_tex_non_utf8_file(tmp_path: Path) -> None:
     dc = DiagCollector(str(tmp_path / "t.mid.md"))
     process_comments(raw, str(tmp_path / "t.mid.md"), diag=dc)
     assert any("include-tex" in d.message for d in dc.errors)
+
+
+# ── P0-1: include-tex recursive into environments ──────────────────────────
+
+
+def test_include_tex_inside_environment(tmp_path: Path) -> None:
+    """include-tex inside begin/end environment is processed (环境内的 include-tex 被处理)."""
+    frag = tmp_path / "frag.tex"
+    frag.write_text(r"\textbf{included}")
+    text = (
+        "<!-- begin: algorithm -->\n"
+        "<!-- include-tex: frag.tex -->\n"
+        "<!-- end: algorithm -->\n"
+    )
+    doc = parse(text)
+    east = process_comments(doc, str(tmp_path / "test.md"))
+    # The Environment should contain a RawBlock with the included content
+    # (环境应包含含已引入内容的 RawBlock)
+    env = east.children[0]
+    assert env.type == "environment"
+    assert any(
+        hasattr(child, "content") and r"\textbf{included}" in child.content
+        for child in env.children
+    )
