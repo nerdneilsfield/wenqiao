@@ -89,3 +89,42 @@ def test_format_diff_shows_changes(tmp_path: Path) -> None:
     # Diff output should contain --- and +++ markers (差异输出应含标记)
     if canonical != dirty:
         assert "---" in result.output or "+++" in result.output
+
+
+def test_format_fixes_math_backslash(tmp_path: Path) -> None:
+    """format auto-fixes double backslash in math (自动修复数学双反斜杠)."""
+    src = tmp_path / "doc.mid.md"
+    src.write_text("# 标题\n\n公式 $\\\\mathbf{R}$ 在这里。\n")
+    result = CliRunner().invoke(main, ["format", str(src), "--no-rumdl"])
+    assert result.exit_code == 0
+    content = src.read_text()
+    assert "$\\mathbf{R}$" in content
+    assert "$\\\\mathbf{R}$" not in content
+
+
+def test_format_fixes_math_spacing(tmp_path: Path) -> None:
+    """format auto-fixes missing spaces around inline math (自动修复数学公式两侧空格)."""
+    src = tmp_path / "doc.mid.md"
+    src.write_text("# 标题\n\n这是$x^2$公式。\n")
+    result = CliRunner().invoke(main, ["format", str(src), "--no-rumdl"])
+    assert result.exit_code == 0
+    content = src.read_text()
+    assert "这是 $x^2$ 公式" in content
+
+
+def test_format_fixes_bold_spacing(tmp_path: Path) -> None:
+    """format auto-fixes bold marker spacing (自动修复加重标记两侧空格)."""
+    src = tmp_path / "doc.mid.md"
+    src.write_text("# 标题\n\n这是**重要**结论。\n")
+    result = CliRunner().invoke(main, ["format", str(src), "--no-rumdl"])
+    assert result.exit_code == 0
+    content = src.read_text()
+    assert "这是 **重要** 结论" in content
+
+
+def test_format_no_rumdl_flag(tmp_path: Path) -> None:
+    """--no-rumdl skips rumdl step without error (--no-rumdl 跳过 rumdl 无报错)."""
+    src = tmp_path / "doc.mid.md"
+    src.write_text("# Hello\n\nWorld.\n")
+    result = CliRunner().invoke(main, ["format", str(src), "--no-rumdl"])
+    assert result.exit_code == 0
