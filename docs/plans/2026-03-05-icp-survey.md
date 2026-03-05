@@ -2,7 +2,7 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**目标：** 以 wenqiao `.mid.md` 格式写一篇关于 ICP 算法发展与变体、软件加速、硬件加速的完整学术综述。
+**目标：** 以 wenqiao `.mid.md` 格式写一篇关于 ICP 算法发展与变体、软件加速、硬件加速的完整学术综述。用中文写！
 
 **技术栈：** drflow MCP（论文检索 + bibtex）、wenqiao `.mid.md` 格式、AI 生成插图（`ai-*` 指令）、BibTeX 存入 `examples/icp.bib`。
 
@@ -79,6 +79,10 @@ examples/
 | 标签 | 文件 | 内容描述 |
 |------|------|---------|
 | `fig:icp-pipeline` | `images/icp-pipeline.png` | 经典 ICP 四步流程图 |
+| `fig:registration-problem` | `images/registration-problem.png` | 点云配准问题示意 |
+| `fig:convergence-basin` | `images/convergence-basin.png` | 收敛盆与局部极小值示意 |
+| `fig:objective-functions` | `images/objective-functions.png` | P2P/P2Pl/Symmetric 三种残差对比 |
+| `fig:challenges` | `images/icp-challenges.png` | ICP 五大核心挑战 |
 | `fig:taxonomy` | `images/icp-taxonomy.png` | 变体分类树（6 大分支）|
 | `fig:convergence` | `images/convergence-curves.png` | P2P / P2Plane / AA-ICP 收敛曲线对比 |
 | `fig:timeline` | `images/icp-timeline.png` | 1992–2025 发展时间轴 |
@@ -288,19 +292,107 @@ git add examples/icp.bib && git commit -m "feat: collect all ICP survey BibTeX e
 - 对偶四元数表示
 - SE(3) vs Sim(3) 适用场景对比（用一个表或简短段落）
 
-**§3.5 Global Initialization**（`<!-- label: sec:global-init -->`）
+**§3.5 几何退化与可定位性 (Geometric Degeneracy and Localizability)**（`<!-- label: sec:degeneracy -->`）
+**文件：** `examples/icp-survey/ch3-5-degeneracy.mid.md`（**新增**）
+**⚠️ 文件重命名：** `ch3-5-global-init.mid.md` → `ch3-6-global-init.mid.md`，`ch3-6-dl-icp.mid.md` → `ch3-7-dl-icp.mid.md`
+
+本节讨论 ICP 在几何信息不足的环境（走廊、隧道、开阔平原）中的退化问题及解决方案。这是一类**问题适定性**挑战：即使对应关系和变换估计方法均正确，点云的几何结构也无法唯一确定某些自由度的位移。
+
+**§3.5.1 退化的数学本质**（`<!-- label: sec:deg-math -->`）
+- P2Pl ICP 的目标函数 Hessian 矩阵 $H = J^\top J$，当点云法向量分布集中于某 2D 子空间时，$H$ 的某几个特征值接近零（秩亏）
+- 奇异值分解视角：$H = U \Sigma V^\top$，小奇异值对应的方向为退化方向（无法约束）
+- 典型退化场景：走廊（$z$ 方向平移未约束）、开阔平面（俯仰/偏航未约束）、隧道（轴向平移 + 绕轴旋转未约束）
+- 引用：Zhang et al. ICRA 2016 对优化问题退化的理论分析（`zhangDegeneracyOptimizationBased2016`）
+
+**§3.5.2 退化检测方法**（`<!-- label: sec:deg-detection -->`）
+- **特征值阈值法**（Zhang & Singh 2016）：计算 $H$ 的最小特征值 $\lambda_{\min}$，若 $\lambda_{\min} < \tau$ 则判定退化；阈值 $\tau$ 经验选取，不鲁棒
+- **X-ICP 多类别退化检测**（Tuna et al. 2022/2024，`tunaXICPLocalizabilityAwareLiDAR2022`）：将退化细分为"完全退化""部分退化""方向性退化"三类；分析各方向上的约束强度（localizability score），不仅判断退化是否发生，还明确哪些 DOF 退化
+- **概率退化检测**（Hatleskog & Alexis 2024，`hatleskogProbabilisticDegeneracyDetection2024`）：对 P2Pl ICP 的 Hessian 噪声建模（来自点坐标和法向量的测量噪声），将"某方向是否退化"转化为概率判断，阈值有物理意义（来自 LiDAR datasheet 的噪声参数）
+- **点分布退化检测**（Ji et al. ICRA 2024，`jiPointtodistributionDegeneracyDetection2024`）：用点到分布（point-to-distribution）匹配代替点到平面，自适应体素分割提高检测精度
+
+**§3.5.3 退化方向的约束优化**（`<!-- label: sec:deg-handling -->`）
+- **截断奇异值分解（TSVD）**：对退化方向的位移更新直接置零，仅沿约束良好的方向优化；实现简单但硬截断可能导致不连续
+- **软约束法（Tikhonov 正则化）**：在目标函数中加入正则项 $\lambda_\text{reg} \|x - x_\text{prior}\|^2$，来自 IMU 或里程计的先验约束退化方向，而非强制置零；对退化程度敏感性更好
+- **X-ICP 约束 ICP 优化**：将 localizability 分析结果紧耦合到 ICP 优化步骤，沿约束良好方向正常更新，沿退化方向注入先验约束（来自 IMU 或上一帧外推），实现无漂移位姿估计
+- **不等式约束法**（Tuna et al. T-Field Robotics 2025，`tunaInformedConstrainedAligned2025`）：将退化方向约束表示为不等式约束 $\|x_\text{deg}\| \leq \epsilon$，用 QP 求解，对参数调整不敏感
+
+**§3.5.4 退化鲁棒的 ICP 变体**（`<!-- label: sec:deg-variants -->`）
+- **GenZ-ICP**（Lee et al. RA-L 2025，`leeGenZICPGeneralizableDegeneracyRobust2025`）：联合使用 P2P 和 P2Pl 两种误差度量，根据局部几何特征自适应加权——走廊场景（P2Pl 退化）时自动提升 P2P 权重，互补防止退化；不依赖外部传感器
+- **LP-ICP**（Yue et al. 2025，`yueLPICPGeneralLocalizabilityAware2025`）：在 X-ICP 基础上扩展，同时利用点到线（edge point）和点到面（planar point）两类几何约束，可定位性分析涵盖更丰富的几何信息
+- **DAMM-LOAM**（Chandna & Kaushal 2025，`chandnaDAMMLOAMDegeneracyAware2025`）：按法向量分类点云（地面/墙/屋顶/边缘），多度量加权 ICP 与退化感知 WLS，室内走廊精度显著提升
+- **Degeneracy-Aware Factors**（Hinduja et al. IROS 2019，`hindujaDegeneracyAwareFactorsApplications2019`）：将退化感知 ICP 的结果以"部分约束因子"形式融入位姿图优化，仅在良约束方向添加图边，防止退化方向约束污染整个位姿图
+
+**§3.5.5 综合对比**（`<!-- label: sec:deg-compare -->`）
+- 比较表：Method / 退化检测类型 / 处理策略 / 是否需外部传感器 / 退化场景测试集
+- 分析：主动退化缓解（修改优化方向）vs 被动传感器融合（引入 IMU/视觉）的适用场景
+
+**必须引用：**
+`zhangDegeneracyOptimizationBased2016`（理论奠基），`tunaXICPLocalizabilityAwareLiDAR2022`，`tunaInformedConstrainedAligned2025`，`hatleskogProbabilisticDegeneracyDetection2024`，`jiPointtodistributionDegeneracyDetection2024`，`leeGenZICPGeneralizableDegeneracyRobust2025`，`yueLPICPGeneralLocalizabilityAware2025`，`chandnaDAMMLOAMDegeneracyAware2025`，`hindujaDegeneracyAwareFactorsApplications2019`，`wangRecentAdvancesSLAM2025`（综述）
+
+**§3.6 Global Initialization**（`<!-- label: sec:global-init -->`）
+**文件：** `examples/icp-survey/ch3-6-global-init.mid.md`（原 ch3-5）
 - 两阶段流程（文字描述，不用图）
 - FPFH 描述子 + RANSAC 参数讨论
 - FGR vs RANSAC 的成本函数比较
 - Go-ICP 的分支定界策略
 
-**§3.6 Deep Learning Methods**（`<!-- label: sec:dl -->`）
+**§3.7 Deep Learning Methods**（`<!-- label: sec:dl -->`）
+**文件：** `examples/icp-survey/ch3-7-dl-icp.mid.md`（原 ch3-6）
 - 图：`fig:dl-taxonomy`
 - 各类方法（基于特征匹配、端到端、混合）各 1–2 段
 - 方法比较表：列 Method / 类别 / 骨干 / 数据集 / 是否需要法向量（内容读论文后填）
 - 末尾自然过渡到硬件加速章节（用数据说明为何需要硬件）
 
-**§3.7 Chapter Summary**（`<!-- label: sec:variants-summary -->`）
+**§3.8 优化求解器视角 (Optimization Solver Perspective)**（`<!-- label: sec:opt-solvers -->`）
+**文件：** `examples/icp-survey/ch3-8-optimization.mid.md`（**新增**）
+
+本节从优化算法的视角统一审视 ICP 的位姿求解——SVD 是最简单情形的闭合解，而更广泛的残差类型（P2Pl、鲁棒 M-estimator、$\ell_p$ 稀疏范数）均需迭代优化框架。
+
+**§3.8.1 最小二乘统一框架**（`<!-- label: sec:opt-framework -->`）
+- 一般目标函数：$\min_T \sum_i \rho(\|e_i(T)\|^2)$；P2P/P2Pl/Symmetric 三种残差在 $\mathfrak{se}(3)$ 切空间的线性化
+- 正规方程 $J^\top W J \,\delta\xi = -J^\top W e$；SVD 解是 P2P 无加权情形的特例
+- BibTeX key 参考：`solaMicroLieTheory2018`
+
+**§3.8.2 Gauss-Newton 与 Levenberg-Marquardt**（`<!-- label: sec:gn-lm -->`）
+- GN 的二次收敛半径分析；P2Pl-ICP 与 GN 精确等价证明
+- LM 阻尼项 $\lambda I$ 的 trust-region 解释；6×6 正规方程的稀疏 Cholesky 实现
+- 参考：标准 NLS 教材，工程实现参考 KISS-ICP（`vizzoKISSICPDefensePointtoPoint2022`）
+
+**§3.8.3 IRLS 与 M-估计器求解**（`<!-- label: sec:irls -->`）
+- $W_i = \rho'(\|e_i\|)/(2\|e_i\|)$ 的 IRLS 展开；Huber / Cauchy / Geman-McClure 权函数
+- half-quadratic relaxation 收敛保证；与 §3.2 异常值处理的衔接
+
+**§3.8.4 ADMM 与近端方法**（`<!-- label: sec:admm -->`）
+- Sparse ICP（Bouaziz et al. SGP 2013）：变量分裂 $\min_{R,t,z} \|z\|_p^p$ s.t. $Rx_i+t-y_i=z_i$
+- ADMM 三步：① SE(3) 位姿更新；② 近端算子（$\ell_p$ soft-thresholding）；③ 对偶变量更新
+- 关键洞察：将刚体约束与稀疏范数完全解耦；Efficient Sparse ICP 的 SA + 近似距离加速
+- 引用：`bouazizSparseIterativeClosest2013`、`mavridisEfficientSparseICP2015`
+
+**§3.8.5 $SE(3)$ 流形优化**（`<!-- label: sec:lie-opt -->`）
+- 左/右扰动模型、Adjoint；Rodrigues 公式复杂度；与四元数奇异性对比
+- KISS-ICP / LIO-SAM / LOAM 的工程选择比较
+- 引用：`solaMicroLieTheory2018`、`vizzoKISSICPDefensePointtoPoint2022`、`shanLIOSAMTightlyCoupled2020`
+
+**§3.8.6 可认证与全局最优方法**（`<!-- label: sec:certifiable -->`）
+- GNC（`yangGraduatedNonConvexityRobust2020`）：从凸到非凸的连续松弛路径，70–80% 外点鲁棒
+- TEASER++（`yangTEASERFastCertifiable2021`）：TLS + 图论外点剪枝 + SDP 松弛；millisecond 级运行
+- SE-Sync（`rosenSESyncCertifiablyCorrect2019`）：Riemannian truncated-Newton + 最优性证书
+- 三者与 Go-ICP BnB 的对比（精度 / 速度 / 外点率上界）
+
+**§3.8.7 因子图与 SLAM 集成**（`<!-- label: sec:factor-graph -->`）
+- ICP 残差作为二元因子；信息矩阵 $\Omega = J^\top \Sigma^{-1} J$ 物理意义
+- g2o（`kummerleG2oGeneralFramework2011`）/ GTSAM（`dellaertFactorGraphsRobot2017`）接口；iSAM2（`kaessISAM2IncrementalSmoothing2012`）增量平滑
+- 与 §3.5 Degeneracy-Aware Factors 衔接：退化方向 → 信息矩阵秩亏 → 部分约束因子
+
+**§3.8.8 综合对比**（`<!-- label: sec:opt-compare -->`）
+- 比较表：Method / 类别 / 收敛域 / 全局最优 / 近似复杂度 / SLAM 就绪 / 代表系统
+
+**必须引用：**
+`bouazizSparseIterativeClosest2013`、`mavridisEfficientSparseICP2015`、`yangGraduatedNonConvexityRobust2020`、`yangTEASERFastCertifiable2021`、`rosenSESyncCertifiablyCorrect2019`、`kummerleG2oGeneralFramework2011`、`dellaertFactorGraphsRobot2017`、`kaessISAM2IncrementalSmoothing2012`、`solaMicroLieTheory2018`、`vizzoKISSICPDefensePointtoPoint2022`、`shanLIOSAMTightlyCoupled2020`
+
+---
+
+**§3.9 Chapter Summary**（`<!-- label: sec:variants-summary -->`）
 - 各变体类别与其解决挑战的对应关系
 - DL 方法相对经典方法的优劣
 - 变体设计的开放问题

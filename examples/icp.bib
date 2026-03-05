@@ -1,0 +1,1376 @@
+% ICP Survey Bibliography / ICP 综述参考文献库
+% Auto-collected from drflow MCP paper library
+% Generated: 2026-03-05
+
+% ============================================================
+% FOUNDATIONAL MATHEMATICS / 基础数学方法
+% ============================================================
+
+@article{arunLeastSquaresFittingTwo1987,
+  author = {Arun, K. S. and Huang, T. S. and Blostein, S. D.},
+  abstract = {Two point sets pi and p'i; i = 1, 2,..., N are related by p'i = Rpi + T + Ni, where R is a rotation matrix, T a translation vector, and Ni a noise vector. Given pi and p'i, we present an algorithm for finding the least-squares solution of R and T, which is based on the singular value decomposition (SVD) of a 3 x 3 matrix.},
+  doi = {10.1109/TPAMI.1987.4767965},
+  issn = {1939-3539},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  month = {September},
+  number = {5},
+  pages = {698--700},
+  title = {Least-{{Squares Fitting}} of {{Two}} 3-{{D Point Sets}}},
+  volume = {PAMI-9},
+  year = {1987}
+}
+
+% ============================================================
+% FOUNDATIONAL ICP PAPERS / 基础 ICP 论文
+% ============================================================
+
+@article{beslMethodRegistration3D1992,
+  author = {Besl, P.J. and McKay, Neil D.},
+  abstract = {The authors describe a general-purpose, representation-independent method for the accurate and computationally efficient registration of 3-D shapes including free-form curves and surfaces. The method handles the full six degrees of freedom and is based on the iterative closest point (ICP) algorithm, which requires only a procedure to find the closest point on a geometric entity to a given point. The ICP algorithm always converges monotonically to the nearest local minimum of a mean-square distance metric, and the rate of convergence is rapid during the first few iterations. Therefore, given an adequate set of initial rotations and translations for a particular class of objects with a certain level of 'shape complexity', one can globally minimize the mean-square distance metric over all six degrees of freedom by testing each initial registration. One important application of this method is to register sensed data from unfixtured rigid objects with an ideal geometric model, prior to shape inspection. Experimental results show the capabilities of the registration algorithm on point sets, curves, and surfaces.},
+  doi = {10.1109/34.121791},
+  issn = {1939-3539},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  month = {February},
+  number = {2},
+  pages = {239--256},
+  title = {A Method for Registration of 3-{{D}} Shapes},
+  volume = {14},
+  year = {1992}
+}
+
+@article{chenObjectModellingRegistration1992,
+  author = {Chen, Yang and Medioni, Gerard},
+  abstract = {We describe a new method for registering multiple range images taken from different viewpoints of a 3D object. Unlike existing methods that consider registration as a matching of 3D curves or surfaces, our method works directly on depth images. The key observation is that the distance between two 3D surfaces can be minimized by iterating local linearizations of the constraint that nearby points on one surface must lie on the other surface.},
+  journal = {Image and Vision Computing},
+  number = {3},
+  pages = {145--155},
+  title = {Object modelling by registration of multiple range images},
+  volume = {10},
+  year = {1992}
+}
+
+@inproceedings{chenObjectModelingRegistration1991,
+  author = {Chen, Yang and Medioni, Gerard},
+  booktitle = {Proceedings of the 1991 IEEE International Conference on Robotics and Automation (ICRA)},
+  title = {Object Modeling by Registration of Multiple Range Images},
+  year = {1991},
+  pages = {2724--2729},
+  note = {PDF mirror: https://www.cs.hunter.cuny.edu/~ioannis/chen_medioni_point_plane_1991.pdf}
+}
+
+@inproceedings{segalGeneralizedICP2009,
+  author = {Segal, Aleksandr V. and Haehnel, Dirk and Thrun, Sebastian},
+  booktitle = {Proceedings of Robotics: Science and Systems (RSS)},
+  title = {{Generalized-ICP}},
+  year = {2009}
+}
+
+% ============================================================
+% ICP VARIANTS — ROBUSTNESS / ICP 变体——鲁棒性
+% ============================================================
+
+@inproceedings{chetverikovTrimmedIterativeClosest2002,
+  author = {Chetverikov, D. and Svirko, D. and Stepanov, D. and Krsek, P.},
+  abstract = {The problem of geometric alignment of two roughly preregistered, partially overlapping, rigid, noisy 3D point sets is considered. A new natural and simple, robustified extension of the popular Iterative Closest Point (ICP) algorithm (Besl and McKay, 1992) is presented, called the Trimmed ICP (TrICP). The new algorithm is based on the consistent use of the least trimmed squares (LTS) approach in all phases of the operation. Convergence is proved and an efficient implementation is discussed. TrICP is fast, applicable to overlaps under 50\%, robust to erroneous measurements and shape defects, and has easy-to-set parameters. ICP is a special case of TrICP when the overlap parameter is 100\%. Results of testing the new algorithm are shown.},
+  booktitle = {2002 {{International Conference}} on {{Pattern Recognition}}},
+  doi = {10.1109/ICPR.2002.1047997},
+  month = {August},
+  pages = {545-548 vol.3},
+  title = {The {{Trimmed Iterative Closest Point}} Algorithm},
+  volume = {3},
+  year = {2002}
+}
+
+@inproceedings{bouazizSparseIterativeClosest2013,
+  author = {Bouaziz, Sofien and Tagliasacchi, Andrea and Pauly, Mark},
+  abstract = {Rigid registration of two geometric data sets is essential in many applications, including robot navigation, surface reconstruction, and shape matching. Most commonly, variants of the Iterative Closest Point (ICP) algorithm are employed for this task. These methods alternate between closest point computations to establish correspondences between two data sets, and solving for the optimal transformation that brings these correspondences into alignment. A major difficulty for this approach is the sensitivity to outliers and missing data often observed in 3D scans. Most practical implementations of the ICP algorithm address this issue with a number of heuristics to prune or reweight correspondences. However, these heuristics can be unreliable and difficult to tune, which often requires substantial manual assistance. We propose a new formulation of the ICP algorithm that avoids these difficulties by formulating the registration optimization using sparsity inducing norms.},
+  address = {Goslar, DEU},
+  booktitle = {Proceedings of the {{Eleventh Eurographics}}/{{ACMSIGGRAPH Symposium}} on {{Geometry Processing}}},
+  doi = {10.1111/cgf.12178},
+  month = {July},
+  pages = {113--123},
+  publisher = {Eurographics Association},
+  series = {{{SGP}} '13},
+  title = {Sparse Iterative Closest Point},
+  year = {2013}
+}
+
+@article{yangRANSACs3DRigid2022,
+  author = {Yang, Jiaqi and Huang, Zhiqiang and Quan, Siwen and Cao, Zhiguo and Zhang, Yanning},
+  doi = {10.1109/JAS.2022.105500},
+  issn = {2329-9274},
+  journal = {IEEE/CAA Journal of Automatica Sinica},
+  month = {October},
+  number = {10},
+  pages = {1861--1878},
+  shorttitle = {{{RANSACs}} for {{3D Rigid Registration}}},
+  title = {{{RANSACs}} for {{3D}} Rigid Registration: {{A}} Comparative Evaluation},
+  volume = {9},
+  year = {2022}
+}
+
+@article{zhengCorrentropyScaleICP2019,
+  author = {Wu, Zongze and Chen, Hongchen and Du, Shaoyi and Fu, Minyue and Zhou, Nan and Zheng, Nanning},
+  doi = {10.1016/j.patcog.2019.03.013},
+  issn = {0031-3203},
+  journal = {Pattern Recognition},
+  month = {September},
+  pages = {14--24},
+  title = {Correntropy Based Scale {{ICP}} Algorithm for Robust Point Set Registration},
+  volume = {93},
+  year = {2019}
+}
+
+@article{sunSUCOFTRobustPoint2024,
+  author = {Sun, Lei},
+  doi = {10.1109/TGRS.2024.3404959},
+  issn = {1558-0644},
+  journal = {IEEE Transactions on Geoscience and Remote Sensing},
+  pages = {1--21},
+  shorttitle = {{{SUCOFT}}},
+  title = {{{SUCOFT}}: {{Robust Point Cloud Registration Based}} on {{Guaranteed Supercore Maximization}} and {{Flexible Thresholding}}},
+  volume = {62},
+  year = {2024}
+}
+
+@inproceedings{rusinkiewiczEfficientVariantsICP2001,
+  author = {Rusinkiewicz, S. and Levoy, M.},
+  booktitle = {Proceedings {{Third International Conference}} on 3-{{D Digital Imaging}} and {{Modeling}}},
+  doi = {10.1109/IM.2001.924423},
+  keywords = {Convergence,ICP variants,Normal-space sampling,Point-to-plane},
+  pages = {145--152},
+  title = {Efficient Variants of the {{ICP}} Algorithm},
+  year = {2001}
+}
+
+@article{rusinkiewiczSymmetricObjectiveFunction2019,
+  author = {Rusinkiewicz, Szymon},
+  abstract = {The Iterative Closest Point (ICP) algorithm, commonly used for alignment of 3D models, has previously been defined using either a point-to-point or point-to-plane objective. We introduce a new symmetrized objective function that achieves the simplicity and computational efficiency of point-to-plane optimization, while yielding improved convergence speed and a wider convergence basin.},
+  doi = {10.1145/3306346.3323037},
+  issn = {0730-0301},
+  journal = {ACM Transactions on Graphics},
+  month = {July},
+  number = {4},
+  pages = {85:1--85:7},
+  title = {A Symmetric Objective Function for {{ICP}}},
+  volume = {38},
+  year = {2019}
+}
+
+@article{zhangFastRobustIterative2022,
+  author = {Zhang, Juyong and Yao, Yuxin and Deng, Bailin},
+  abstract = {The iterative closest point (ICP) algorithm and its variants are a fundamental technique for rigid registration between two point sets, with wide applications in different areas from robotics to 3D reconstruction. The main drawbacks for ICP are its slow convergence, as well as its sensitivity to outliers, missing data, and partial overlaps. Recent work such as Sparse ICP achieves robustness via sparsity optimization at the cost of computational speed. In this paper, we propose a new method for robust registration with fast convergence.},
+  doi = {10.1109/TPAMI.2021.3054619},
+  issn = {1939-3539},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  month = {July},
+  number = {7},
+  pages = {3450--3466},
+  title = {Fast and {{Robust Iterative Closest Point}}},
+  volume = {44},
+  year = {2022}
+}
+
+@article{duRobustPointCloud2025,
+  author = {Du, Shaoyi and Shao, Tiancheng and Tang, Canhui and Zeng, Wei and Tian, Zhiqiang},
+  abstract = {Point cloud registration is a fundamental problem in computer vision, which is extremely challenging for LiDAR point clouds with a lot of noise, outliers, and poor initial position. To deal with these difficulties, this paper proposes a semantic-based iterative closest point algorithm, which utilizes bidirectional distance and correntropy for robust point cloud registration.},
+  doi = {10.1016/j.fmre.2024.04.025},
+  issn = {2667-3258},
+  journal = {Fundamental Research},
+  month = {February},
+  title = {Robust Point Cloud Registration Based on Semantic Iterative Closest Point Algorithm},
+  year = {2025}
+}
+
+% ============================================================
+% ICP VARIANTS — CONVERGENCE / ICP 变体——收敛性
+% ============================================================
+
+@article{hornClosedformSolutionAbsolute1987,
+  author = {Horn, Berthold K. P.},
+  doi = {10.1364/JOSAA.4.000629},
+  issn = {1084-7529},
+  journal = {Journal of the Optical Society of America A},
+  month = {April},
+  number = {4},
+  pages = {629--642},
+  title = {Closed-Form Solution of Absolute Orientation Using Unit Quaternions},
+  volume = {4},
+  year = {1987}
+}
+
+@article{makenSteinICPUncertainty2022,
+  author = {Maken, Fahira Afzal and Ramos, Fabio and Ott, Lionel},
+  doi = {10.1109/LRA.2021.3137503},
+  issn = {2377-3766},
+  journal = {IEEE Robotics and Automation Letters},
+  month = {April},
+  number = {2},
+  pages = {1063--1070},
+  title = {Stein {{ICP}} for Uncertainty Estimation in Point Cloud Matching},
+  volume = {7},
+  year = {2022}
+}
+
+@phdthesis{magnussonThreeDimensionalNormalDistributions2009,
+  author = {Magnusson, Martin},
+  school = {{\"O}rebro University},
+  title = {The Three-Dimensional Normal-Distributions Transform --- an Efficient Representation for Registration, Surface Analysis, and Loop Detection},
+  year = {2009}
+}
+
+@article{pavlovAAICPIterativeClosest2017,
+  author = {Pavlov, A. L. and Ovchinnikov, G. V. and Derbyshev, D. Yu and Tsetserukou, D. and Oseledets, I. V.},
+  abstract = {Iterative Closest Point (ICP) is a widely used method for performing scan-matching and registration. Being simple and robust method, it is still computationally expensive and may be challenging to use in real-time applications with limited resources on mobile platforms. In this paper we propose novel effective method for acceleration of ICP which does not require substantial modifications to the existing code. This method is based on an idea of Anderson acceleration which is an iterative procedure for finding a fixed point of contractive mapping.},
+  archiveprefix = {arXiv},
+  eprint = {1709.05479},
+  journal = {arXiv:1709.05479 [cs]},
+  month = {September},
+  primaryclass = {cs},
+  shorttitle = {{{AA-ICP}}},
+  title = {{{AA-ICP}}: {{Iterative Closest Point}} with {{Anderson Acceleration}}},
+  year = {2017}
+}
+
+@inproceedings{hongVICPVelocityUpdating2010,
+  author = {Hong, Seungpyo and Ko, Heedong and Kim, Jinwook},
+  booktitle = {2010 {IEEE} International Conference on Robotics and Automation},
+  doi = {10.1109/ROBOT.2010.5509312},
+  month = {May},
+  pages = {1893--1898},
+  title = {{VICP}: Velocity Updating Iterative Closest Point Algorithm},
+  year = {2010}
+}
+
+@misc{dellenbachCTICPRealtimeElastic2022,
+  author = {Dellenbach, Pierre and Deschaud, Jean-Emmanuel and Jacquet, Bastien and Goulette, Fran{\\c c}ois},
+  archiveprefix = {arXiv},
+  doi = {10.48550/arXiv.2109.12979},
+  eprint = {2109.12979},
+  month = {February},
+  number = {arXiv:2109.12979},
+  primaryclass = {cs},
+  publisher = {arXiv},
+  shorttitle = {{{CT-ICP}}},
+  title = {{{CT-ICP}}: {{Real-time Elastic LiDAR Odometry}} with {{Loop Closure}}},
+  year = {2022}
+}
+
+@article{xiaScalingIterativeClosest2017,
+  author = {Xia, Wenze and Han, Shaokun and Cao, Jingya and Cao, Jie and Yu, Haoyong},
+  abstract = {This paper presents a novel extended iterative closest point algorithm which can handle 3D point sets registration problem with scaling factor. In each iterative process of this algorithm, a scaling factor is introduced into objective function used to estimate all the transformation parameters, and this paper succeeds in solving this objective function using dual number quaternions.},
+  doi = {10.1016/J.IJLEO.2017.05.030},
+  title = {Scaling Iterative Closest Point Algorithm Using Dual Number Quaternions},
+  year = {2017}
+}
+
+% ============================================================
+% ICP VARIANTS — SPECIAL SENSOR / ICP 变体——特殊传感器
+% ============================================================
+
+@misc{hexselDICPDopplerIterative2022,
+  author = {Hexsel, Bruno and Vhavle, Heethesh and Chen, Yi},
+  abstract = {In this paper, we present a novel algorithm for point cloud registration for range sensors capable of measuring per-return instantaneous radial velocity: Doppler ICP. Existing variants of ICP that solely rely on geometry or other features generally fail to estimate the motion of the sensor correctly in scenarios that have non-distinctive features and/or repetitive geometric structures such as hallways, tunnels, highways, and bridges. We propose a new Doppler velocity objective function that exploits the compatibility of each point's Doppler measurement and the sensor's current motion estimate.},
+  archiveprefix = {arXiv},
+  doi = {10.48550/arXiv.2201.11944},
+  eprint = {2201.11944},
+  month = {May},
+  number = {arXiv:2201.11944},
+  primaryclass = {cs},
+  publisher = {arXiv},
+  shorttitle = {{{DICP}}},
+  title = {{{DICP}}: {{Doppler}} Iterative Closest Point Algorithm},
+  year = {2022}
+}
+
+@article{xuFASTLIO2FastDirect2022,
+  author = {Xu, Wei and Cai, Yixi and He, Dongjiao and Lin, Jiarong and Zhang, Fu},
+  doi = {10.1109/TRO.2022.3141876},
+  issn = {1941-0468},
+  journal = {IEEE Transactions on Robotics},
+  month = {August},
+  number = {4},
+  pages = {2053--2073},
+  shorttitle = {{{FAST-LIO2}}},
+  title = {{{FAST-LIO2}}: {{Fast}} Direct {{LiDAR-inertial}} Odometry},
+  volume = {38},
+  year = {2022}
+}
+
+@article{liuHABFNNICPStreamingFPGA2025,
+  author = {Liu, Yueze and Tian, Yihong and Shen, Xiaoxu and Qian, Guanyu and Yang, Hongwei and Chen, Xuemei},
+  doi = {10.1109/TCSI.2025.3609805},
+  issn = {1558-0806},
+  journal = {IEEE Transactions on Circuits and Systems I: Regular Papers},
+  pages = {1--11},
+  title = {{{HA-BFNN-ICP}} a Streaming {{FPGA}} Architecture for Energy Efficient Real-Time {{3D LiDAR}} Mapping},
+  year = {2025}
+}
+
+@article{mujaScalableNearestNeighbor2014,
+  author = {Muja, Marius and Lowe, David G.},
+  doi = {10.1109/TPAMI.2014.2321376},
+  issn = {1939-3539},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  month = {November},
+  number = {11},
+  pages = {2227--2240},
+  title = {Scalable Nearest Neighbor Algorithms for High Dimensional Data},
+  volume = {36},
+  year = {2014}
+}
+
+@inproceedings{choyFullyConvolutionalGeometric2019,
+  author = {Choy, Christopher and Park, Jaesik and Koltun, Vladlen},
+  booktitle = {Proceedings of the {{IEEE}}/{{CVF International Conference}} on {{Computer Vision}} ({{ICCV}})},
+  pages = {8958--8967},
+  title = {Fully Convolutional Geometric Features},
+  year = {2019}
+}
+
+@incollection{zhouFastGlobalRegistration2016,
+  author = {Zhou, Qian-Yi and Park, Jaesik and Koltun, Vladlen},
+  booktitle = {Computer {{Vision}} -- {{ECCV}} 2016},
+  doi = {10.1007/978-3-319-46475-6_47},
+  pages = {766--782},
+  publisher = {Springer International Publishing},
+  title = {Fast {{Global Registration}}},
+  volume = {9906},
+  year = {2016}
+}
+
+@inproceedings{xuTigrisArchitectureAlgorithms2019,
+  author = {Xu, Tiancheng and Tian, Boyuan and Zhu, Yuhao},
+  booktitle = {Proceedings of the 52nd {{Annual IEEE}}/{{ACM International Symposium}} on {{Microarchitecture}}},
+  doi = {10.1145/3352460.3358259},
+  pages = {629--642},
+  publisher = {Association for Computing Machinery},
+  series = {{{MICRO}} '52},
+  shorttitle = {Tigris},
+  title = {Tigris: {{Architecture}} and Algorithms for {{3D}} Perception in Point Clouds},
+  year = {2019}
+}
+
+@article{dengEnergyefficientRealtimeFPGA2025,
+  author = {Deng, Qi and Sun, Hao and Shu, Yuhao and Xiao, Jianzhong and Jiang, Weixiong and Wang, Hui and Ha, Yajun},
+  doi = {10.1145/3771768},
+  issn = {1936-7406},
+  journal = {ACM Transactions on Reconfigurable Technology and Systems},
+  number = {4},
+  pages = {1--30},
+  title = {An Energy-Efficient and Real-Time {{FPGA-based}} Point Cloud Registration Framework with Ultra-Fast and Configurable Multi-Mode Correspondence Search},
+  volume = {18},
+  year = {2025}
+}
+
+% ============================================================
+% GLOBAL REGISTRATION / 全局配准
+% ============================================================
+
+@article{yangGoICPGloballyOptimal2016,
+  author = {Yang, Jiaolong and Li, Hongdong and Campbell, Dylan and Jia, Yunde},
+  abstract = {The Iterative Closest Point (ICP) algorithm is one of the most widely used methods for point-set registration. However, being based on local iterative optimization, ICP is known to be susceptible to local minima. This paper presents the first globally optimal algorithm, named Go-ICP, for Euclidean (rigid) registration of two 3D point-sets under the $L_2$ error metric defined in ICP. The Go-ICP method is based on a branch-and-bound scheme that searches the entire 3D motion space $SE(3)$.},
+  doi = {10.1109/TPAMI.2015.2513405},
+  issn = {1939-3539},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  month = {November},
+  number = {11},
+  pages = {2241--2254},
+  shorttitle = {Go-{{ICP}}},
+  title = {Go-{{ICP}}: {{A Globally Optimal Solution}} to {{3D ICP Point-Set Registration}}},
+  volume = {38},
+  year = {2016}
+}
+
+@inproceedings{rusuFPFHFastPoint2009,
+  author = {Rusu, Radu Bogdan and Blodow, Nico and Beetz, Michael},
+  abstract = {In our recent work, we proposed Point Feature Histograms (PFH) as robust multi-dimensional features which describe the local geometry around a point p for 3D point cloud datasets. In this paper, we modify their mathematical expressions and perform a rigorous analysis on their robustness and complexity for the problem of 3D registration for overlapping point cloud views. More concretely, we present several optimizations that reduce their computation times drastically by either caching previously computed values or by revising their theoretical formulations. The latter results in a new type of local features, called Fast Point Feature Histograms (FPFH), which retain most of the discriminative power of the PFH.},
+  booktitle = {2009 {{IEEE International Conference}} on {{Robotics}} and {{Automation}}},
+  doi = {10.1109/ROBOT.2009.5152473},
+  month = {May},
+  pages = {3212--3217},
+  title = {{{FPFH}}: {{Fast Point Feature Histograms}} ({{FPFH}}) for {{3D}} Registration},
+  year = {2009}
+}
+
+@article{yangTEASERFastCertifiable2021,
+  author = {Yang, Heng and Shi, Jingnan and Carlone, Luca},
+  abstract = {We propose the first fast and certifiable algorithm for the registration of two sets of three-dimensional (3-D) points in the presence of large amounts of outlier correspondences. A certifiable algorithm is one that attempts to solve an intractable optimization problem (e.g., robust estimation with outliers) and provides readily checkable conditions to verify if the returned solution is optimal.},
+  doi = {10.1109/TRO.2020.3033695},
+  issn = {1941-0468},
+  journal = {IEEE Transactions on Robotics},
+  month = {April},
+  number = {2},
+  pages = {314--333},
+  shorttitle = {{{TEASER}}},
+  title = {{{TEASER}}: {{Fast}} and {{Certifiable Point Cloud Registration}}},
+  volume = {37},
+  year = {2021}
+}
+
+% ============================================================
+% FEATURE-RICH ICP VARIANTS / 特征增强型 ICP 变体
+% ============================================================
+
+@article{heGFOICPGeometricFeature2023,
+  author = {He, Leping and Wang, Shuaiqing and Hu, Qijun and Cai, Qijie and Li, Muyao and Bai, Yu and Wu, Kai and Xiang, Bo},
+  abstract = {Three-dimensional point cloud registration is a crucial technique for point cloud processing. Iterative closest point (ICP) is widely used for rigid registration of point clouds because of its simplicity but suffers from slow convergence and the tendency to fall into local optimization. In this article, we proposed a new robust and fast point cloud registration method, the ICP optimized by geometric features (including normal, curvature, and point distance), called GFOICP.},
+  doi = {10.1109/TGRS.2023.3317822},
+  issn = {1558-0644},
+  journal = {IEEE Transactions on Geoscience and Remote Sensing},
+  pages = {1--17},
+  shorttitle = {{{GFOICP}}},
+  title = {{{GFOICP}}: {{Geometric Feature Optimized Iterative Closest Point}} for 3-{{D Point Cloud Registration}}},
+  volume = {61},
+  year = {2023}
+}
+
+% ============================================================
+% DEEP LEARNING FOR REGISTRATION / 深度学习配准
+% ============================================================
+
+@inproceedings{wangDeepClosestPoint2019,
+  author = {Wang, Yue and Solomon, Justin},
+  abstract = {Point cloud registration is a key problem for computer vision applied to robotics, medical imaging, and other applications. This problem involves finding a rigid transformation from one point cloud into another so that they align. To address local optima and other difficulties in the ICP pipeline, we propose a learning-based method, titled Deep Closest Point (DCP), inspired by recent techniques in computer vision and natural language processing.},
+  address = {Seoul, Korea (South)},
+  booktitle = {2019 {{IEEE}}/{{CVF International Conference}} on {{Computer Vision}} ({{ICCV}})},
+  doi = {10.1109/ICCV.2019.00362},
+  month = {October},
+  pages = {3522--3531},
+  publisher = {IEEE},
+  shorttitle = {Deep {{Closest Point}}},
+  title = {Deep {{Closest Point}}: {{Learning Representations}} for {{Point Cloud Registration}}},
+  year = {2019}
+}
+
+@inproceedings{luDeepVCPEndtoEndDeep2019,
+  author = {Lu, Weixin and Wan, Guowei and Zhou, Yao and Fu, Xiangyu and Yuan, Pengfei and Song, Shiyu},
+  booktitle = {Proceedings of the {{IEEE}}/{{CVF International Conference}} on {{Computer Vision}}},
+  pages = {12--21},
+  shorttitle = {{{DeepVCP}}},
+  title = {{{DeepVCP}}: {{An End-to-End Deep Neural Network}} for {{Point Cloud Registration}}},
+  year = {2019}
+}
+
+@article{yewRPMNetRobustPoint2020,
+  author = {Yew, Zi Jian and Lee, Gim Hee},
+  abstract = {Iterative Closest Point (ICP) solves the rigid point cloud registration problem iteratively in two steps: (1) make hard assignments of spatially closest point correspondences, and then (2) find the least-squares rigid transformation. In this paper, we propose the RPM-Net -- a less sensitive to initialization and more robust deep learning-based approach for rigid point cloud registration. To this end, our network uses the differentiable Sinkhorn layer and annealing to get soft assignments of point correspondences from hybrid features learned from both spatial coordinates and local geometry.},
+  address = {Seattle, WA, USA},
+  doi = {10.1109/CVPR42600.2020.01184},
+  journal = {2020 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  month = {June},
+  pages = {11821--11830},
+  publisher = {IEEE},
+  shorttitle = {{{RPM-Net}}},
+  title = {{{RPM-Net}}: {{Robust Point Matching Using Learned Features}}},
+  year = {2020}
+}
+
+@inproceedings{huangPREDATORRegistration3D2021,
+  author = {Huang, Shengyu and Gojcic, Zan and Usvyatsov, Mikhail and Wieser, Andreas and Schindler, Konrad},
+  booktitle = {2021 {{IEEE}}/{{CVF Conference}} on {{Computer Vision}} and {{Pattern Recognition}} ({{CVPR}})},
+  doi = {10.1109/CVPR46437.2021.00425},
+  month = {June},
+  pages = {4265--4274},
+  publisher = {IEEE},
+  title = {{{PREDATOR}}: {{Registration}} of {{3D}} {{Point Clouds}} with {{Low Overlap}}},
+  year = {2021}
+}
+
+@inproceedings{qinGeometricTransformerFast2022a,
+  author = {Qin, Zheng and Yu, Hao and Wang, Changiian and Guo, Yulan and Peng, Yuxing and Xu, Kai},
+  abstract = {We study the problem of extracting accurate correspondences for point cloud registration. We propose Geometric Transformer to learn geometric feature for robust superpoint matching. It encodes pair-wise distances and triplet-wise angles, making it robust in low-overlap cases and invariant to rigid transformation. The simplistic design attains surprisingly high matching accuracy such that no RANSAC is required in the estimation of alignment transformation, leading to 100 times acceleration.},
+  booktitle = {2022 {{IEEE}}/{{CVF Conference}} on {{Computer Vision}} and {{Pattern Recognition}} ({{CVPR}})},
+  doi = {10.1109/CVPR52688.2022.01086},
+  month = {June},
+  pages = {11133--11142},
+  title = {Geometric {{Transformer}} for {{Fast}} and {{Robust Point Cloud Registration}}},
+  year = {2022}
+}
+
+@article{shePointDifformerRobustPoint2024,
+  author = {She, Rui and Kang, Qiyu and Wang, Sijie and Tay, Wee Peng and Zhao, Kai and Song, Yang and Geng, Tianyu and Xu, Yi and Navarro, Diego Navarro and Hartmannsgruber, Andreas},
+  abstract = {Point cloud registration is a fundamental technique in 3-D computer vision with applications in graphics, autonomous driving, and robotics. We propose a robust point cloud registration approach that leverages graph neural partial differential equations (PDEs) and heat kernel signatures.},
+  doi = {10.1109/TGRS.2024.3351286},
+  issn = {1558-0644},
+  journal = {IEEE Transactions on Geoscience and Remote Sensing},
+  pages = {1--15},
+  shorttitle = {{{PointDifformer}}},
+  title = {{{PointDifformer}}: {{Robust Point Cloud Registration With Neural Diffusion}} and {{Transformer}}},
+  volume = {62},
+  year = {2024}
+}
+
+@misc{panagiotakiNARICPNeuralExecution2025,
+  author = {Panagiotaki, Efimia and Martini, Daniele De and Kunze, Lars and Newman, Paul and Veli{\v c}kovi{\'c}, Petar},
+  abstract = {This study explores the intersection of neural networks and classical robotics algorithms through the Neural Algorithmic Reasoning (NAR) blueprint, enabling the training of neural networks to reason like classical robotics algorithms by learning to execute them. We propose a novel Graph Neural Network (GNN)-based framework, NAR-*ICP, that learns the intermediate computations of classical ICP-based registration algorithms.},
+  archiveprefix = {arXiv},
+  doi = {10.48550/arXiv.2410.11031},
+  eprint = {2410.11031},
+  month = {October},
+  number = {arXiv:2410.11031},
+  primaryclass = {cs},
+  publisher = {arXiv},
+  shorttitle = {{{NAR-}}*{{ICP}}},
+  title = {{{NAR-}}*{{ICP}}: {{Neural Execution}} of {{Classical ICP-based Pointcloud Registration Algorithms}}},
+  year = {2025}
+}
+
+@incollection{yanagiLearning3DPoint2025,
+  author = {Yanagi, Rintaro and Hashimoto, Atsushi and Chiba, Naoya and Sone, Shusaku and Ma, Jiaxin and Ushiku, Yoshitaka},
+  abstract = {We present a simple yet effective technique to boost the performance of 3D point cloud registration. Conventional methods input a distance matrix to a differentiable matching algorithm deterministically, ignoring any uncertainty in upstream distance calculation. We connect them via a non-deterministic information path.},
+  address = {Singapore},
+  booktitle = {Computer {{Vision}} -- {{ACCV}} 2024},
+  doi = {10.1007/978-981-96-0969-7_11},
+  pages = {175--193},
+  publisher = {Springer Nature Singapore},
+  title = {Learning {{3D}} Point Cloud Registration as a Single Optimization Problem},
+  volume = {15480},
+  year = {2025}
+}
+
+% ============================================================
+% ALTERNATIVE REGISTRATION / 替代配准方法
+% ============================================================
+
+@inproceedings{biberNormalDistributionsTransform2003a,
+  author = {Biber, P. and Strasser, W.},
+  abstract = {Matching 2D range scans is a basic component of many localization and mapping algorithms. We propose an alternative representation for a range scan, the normal distributions transform. Similar to an occupancy grid, we subdivide the 2D plane into cells. To each cell, we assign a normal distribution, which locally models the probability of measuring a point. The result of the transform is a piecewise continuous and differentiable probability density, that can be used to match another scan using Newton's algorithm.},
+  booktitle = {Proceedings 2003 {{IEEE}}/{{RSJ International Conference}} on {{Intelligent Robots}} and {{Systems}} ({{IROS}} 2003)},
+  doi = {10.1109/IROS.2003.1249285},
+  month = {October},
+  pages = {2743-2748 vol.3},
+  shorttitle = {The Normal Distributions Transform},
+  title = {The Normal Distributions Transform: A New Approach to Laser Scan Matching},
+  volume = {3},
+  year = {2003}
+}
+
+% ============================================================
+% HARDWARE ACCELERATION — GPU / GPU 加速
+% ============================================================
+
+@article{changAcceleratingNearestNeighbor2025,
+  author = {Chang, Qiong and Wang, Weimin and Miyazaki, Jun},
+  abstract = {The Iterative Closest Points (ICP) algorithm is the most widely used method for estimating rigid transformation in 3D point cloud registration. However, the ICP relies on repeatedly performing computationally intensive nearest neighbor searches (NNS) within 3D space. To address this issue, we propose two approximate nearest neighbor search (ANNS) acceleration strategies for efficient improvement of the processing speed of the NNS. Both the proposed methods are suited to be parallelized on GPUs with a low computational load.},
+  doi = {10.1145/3716875},
+  issn = {1544-3566},
+  journal = {ACM Trans. Archit. Code Optim.},
+  month = {March},
+  number = {1},
+  pages = {43:1--43:24},
+  title = {Accelerating {{Nearest Neighbor Search}} in {{3D Point Cloud Registration}} on {{GPUs}}},
+  volume = {22},
+  year = {2025}
+}
+
+% ============================================================
+% HARDWARE ACCELERATION — FPGA / FPGA 加速
+% ============================================================
+
+@article{sunRealtimeFPGABasedPoint,
+  author = {Sun, Hao and Xiao, Jianzhong and Chen, Fupeng and Jiang, Weixiong and Ha, Yajun},
+  abstract = {Registration algorithm is essential in LiDAR (light detection and ranging) based localization and mapping systems. Unfortunately, current implementations suffer from a limited running speed of only 2 FPS (frames per second) on vehicle-embedded CPUs, primarily due to the inefficiency of the correspondence searching process. To address this issue, we propose a real-time FPGA-based point cloud registration framework equipped with fast and efficient correspondence searching capabilities. Experimental results demonstrate that our proposed framework achieves a real-time performance of 18.6 FPS. Our correspondence searching accelerator is 13.7 times faster than other FPGA implementations.},
+  title = {A {{Real-time FPGA-Based Point Cloud Registration Framework}} with {{Efficient Correspondence Searching}}},
+  langid = {english}
+}
+
+@article{kosugeSoCFPGAbasedIterativeclosestpointAccelerator2020,
+  author = {Kosuge, Atsutake and Yamamoto, Keisuke and Akamine, Yukinori and Oshima, Takashi},
+  annotation = {TLDR: An FPGA-based ICP accelerator, which achieves 11.7-times-faster object-pose estimation by a picking robot compared with the state-of-the-art technique based on K-D-tree k-nearest neighbor (NN) search and four-core CPU.},
+  doi = {10.1109/tie.2020.2978722},
+  issn = {0278-0046 1557-9948},
+  journal = {IEEE Transactions on Industrial Electronics},
+  pages = {1--1},
+  title = {An {{SoC-FPGA-based}} Iterative-Closest-Point Accelerator Enabling Faster Picking Robots},
+  year = {2020}
+}
+
+@inproceedings{wangFPGAbasedKNNSeach2024a,
+  author = {Wang, Chengliang and Huang, Zhetong and Ren, Ao and Zhang, Xun},
+  abstract = {Point cloud registration assumes a crucial role in several fields, including 3D reconstruction and pose estimation. The prevalent technique for point cloud registration is Iterative Closest Point (ICP). Nonetheless, the k-nearest neighbor (kNN) search, an essential component of the ICP process, often falls short in meeting real-time requirements due to its substantial time consumption. This study proposes an FPGA-based kNN Search Accelerator, leveraging an improved LSH approach to expedite point cloud access and search. Experimental results underscore its superiority with a 120x and 15x speed-up compared to CPU and GPU implementations of the kNN process, respectively.},
+  booktitle = {2024 {{IEEE International Symposium}} on {{Circuits}} and {{Systems}} ({{ISCAS}})},
+  doi = {10.1109/ISCAS58744.2024.10558303},
+  month = {May},
+  pages = {1--5},
+  title = {An {{FPGA-based kNN}} Seach Accelerator for Point Cloud Registration},
+  year = {2024}
+}
+
+@article{liuHABFNNICPStreamingFPGA2025a,
+  author = {Liu, Yueze and Tian, Yihong and Shen, Xiaoxu and Qian, Guanyu and Yang, Hongwei and Chen, Xuemei},
+  abstract = {Three-dimensional Light Detection and Ranging (3D LiDAR) sensors are widely used in autonomous vehicles including localization, sensing, and mapping. However, their significant computational requirements remains a major limitation. This paper presents a novel high-efficiency 3D mapping method that aims to achieve faster computation speeds than CPUs while providing better energy efficiency compared to GPUs. We introduce a new processing architecture called Hardware Accelerated Brute Force Nearest Neighbor (HA-BFNN). Our FPGA implementation achieves up to 17.36x speedup in execution time compared to CPU implementations, while consuming only 3.4W of power.},
+  doi = {10.1109/TCSI.2025.3609805},
+  issn = {1558-0806},
+  journal = {IEEE Transactions on Circuits and Systems I: Regular Papers},
+  pages = {1--11},
+  title = {{{HA-BFNN-ICP}} a Streaming {{FPGA}} Architecture for Energy Efficient Real-Time {{3D LiDAR}} Mapping},
+  year = {2025}
+}
+
+@article{dengEnergyefficientRealtimeFPGAbased2025a,
+  author = {Deng, Qi and Sun, Hao and Shu, Yuhao and Xiao, Jianzhong and Jiang, Weixiong and Wang, Hui and Ha, Yajun},
+  abstract = {Point cloud registration is a fundamental task in LiDAR-based localization and mapping, widely employed in robotics and autonomous vehicles. To solve these issues, we propose a fundamentally re-architected, energy-efficient FPGA framework for real-time point cloud registration, featuring a configurable, multi-mode correspondence search engine. Experimental results demonstrate that the proposed SA-RPS-CS accelerator delivers 2.3--32.4x faster search and 1.8--26.2x higher energy efficiency than previous state-of-the-art FPGA designs, achieving real-time registration for 64-channel LiDAR at 21.5 FPS.},
+  doi = {10.1145/3771768},
+  issn = {1936-7406, 1936-7414},
+  journal = {ACM Transactions on Reconfigurable Technology and Systems},
+  month = {December},
+  number = {4},
+  pages = {1--30},
+  title = {An Energy-Efficient and Real-Time {{FPGA-based}} Point Cloud Registration Framework with Ultra-Fast and Configurable Multi-Mode Correspondence Search},
+  volume = {18},
+  year = {2025}
+}
+
+@article{sugiuraFPGAacceleratedCorrespondencefreePoint2025,
+  author = {Sugiura, Keisuke and Matsutani, Hiroki},
+  abstract = {Point cloud registration serves as a basis for vision and robotic applications including 3D reconstruction and mapping. We propose a fast, accurate, and robust registration for low-cost embedded FPGAs. Based on a parallel and pipelined PointNet feature extractor, we develop custom accelerator cores namely PointLKCore and ReAgentCore, for two different learning-based methods. They run 58.27--63.21x faster than ARM Cortex-A53 CPU and offer 1.54--10.91x speedups over Intel Xeon CPU and Nvidia Jetson boards, while consuming less than 1 W and achieving 133.63--267.57x energy efficiency compared to Nvidia GeForce GPU.},
+  doi = {10.1145/3717836},
+  issn = {1936-7406, 1936-7414},
+  journal = {ACM Transactions on Reconfigurable Technology and Systems},
+  month = {June},
+  number = {2},
+  pages = {1--41},
+  title = {{{FPGA-accelerated}} Correspondence-Free Point Cloud Registration with {{PointNet}} Features},
+  volume = {18},
+  year = {2025}
+}
+
+@article{mengFPGAbasedRealtimeLoop2025,
+  author = {Meng, Shijie and Deng, Qi and Jiang, Weixiong and Huang, Jinjie and Sun, Hao and Ha, Yajun},
+  abstract = {Loop closure detection (LCD) is crucial in LiDAR-based Simultaneous Localization and Mapping (SLAM) for smart vehicles, demanding both real-time performance and high-accuracy. To address the issue, we propose three key techniques to achieve a real-time FPGA-based LCD framework. Our LCD accelerator demonstrates 128.8x performance improvement across multiple datasets in various scenes and achieves the required real-time performance.},
+  doi = {10.1109/TCSI.2025.3567058},
+  issn = {1558-0806},
+  journal = {IEEE Transactions on Circuits and Systems I: Regular Papers},
+  pages = {1--14},
+  title = {An {{FPGA-based}} Real-Time Loop Closure Detection Framework with Ultra-Fast Descriptor Generator},
+  year = {2025}
+}
+
+% ============================================================
+% HARDWARE ACCELERATION — CUSTOM PROCESSORS / 专用处理器加速
+% ============================================================
+
+@inproceedings{xuTigrisArchitectureAlgorithms2019a,
+  author = {Xu, Tiancheng and Tian, Boyuan and Zhu, Yuhao},
+  abstract = {Machine perception applications are increasingly moving toward manipulating and processing 3D point cloud. This paper focuses on point cloud registration, a key primitive of 3D data processing widely used in high-level tasks such as odometry, simultaneous localization and mapping, and 3D reconstruction. We present Tigris, an algorithm-architecture co-designed system specialized for point cloud registration. Overall, Tigris achieves 77.2x speedup and 7.4x power reduction in KD-tree search over an RTX 2080 Ti GPU, which translates to a 41.7\% registration performance improvements and 3.0x power reduction.},
+  address = {New York, NY, USA},
+  booktitle = {Proceedings of the 52nd {{Annual IEEE}}/{{ACM International Symposium}} on {{Microarchitecture}}},
+  doi = {10.1145/3352460.3358259},
+  month = {October},
+  pages = {629--642},
+  publisher = {Association for Computing Machinery},
+  series = {{{MICRO}} '52},
+  shorttitle = {Tigris},
+  title = {Tigris: {{Architecture}} and Algorithms for {{3D}} Perception in Point Clouds},
+  year = {2019}
+}
+
+@inproceedings{bakhshalipourTartanMicroarchitectingRobotic2024,
+  author = {Bakhshalipour, Mohammad and Gibbons, Phillip B.},
+  address = {Buenos Aires, Argentina},
+  booktitle = {2024 {{ACM}}/{{IEEE}} 51st {{Annual International Symposium}} on {{Computer Architecture}} ({{ISCA}})},
+  doi = {10.1109/ISCA59077.2024.00047},
+  month = {June},
+  pages = {548--565},
+  publisher = {IEEE},
+  shorttitle = {Tartan},
+  title = {Tartan: {{Microarchitecting}} a Robotic Processor},
+  year = {2024}
+}
+
+@inproceedings{hanPointISAISAextensionsEfficient2025,
+  author = {Han, Meng and Wang, Liang and Xiao, Limin and Zhang, Hao and Jiang, Bowen and Xie, Xilong and Zhu, Jianfeng and Wei, Shaojun and Liu, Leibo},
+  address = {Seoul Korea},
+  booktitle = {Proceedings of the 2025 58th {{IEEE}}/{{ACM International Symposium}} on {{Microarchitecture}}},
+  doi = {10.1145/3725843.3756122},
+  month = {October},
+  pages = {1867--1881},
+  publisher = {ACM},
+  shorttitle = {{{PointISA}}},
+  title = {{{PointISA}}: {{ISA-extensions}} for Efficient Point Cloud Analytics via Architecture and Algorithm Co-Design},
+  year = {2025}
+}
+
+% ============================================================
+% HARDWARE ACCELERATION — PIM / 存内计算加速
+% ============================================================
+
+@inproceedings{niePICKSRAMbasedProcessinginmemory2025,
+  author = {Nie, Chen and Jiang, Chao and Xiao, Liming and Zhang, Weifeng and He, Zhezhi},
+  abstract = {K-nearest neighbor (kNN) search is a fundamental operation in various point cloud applications, such as autonomous driving. However, the heavy computational intensity and memory demands of kNN search pose significant challenges for efficient implementation. We propose PICK, a processing-in-memory (PIM) architecture designed to accelerate kNN search in point cloud applications. PICK leverages bit-serial-based PIM (BS-PIM) and customized circuits to efficiently handle key operations. According to our experiments, PICK achieves 4.17x speedup and a 4.42x energy saving over the state-of-the-art design.},
+  booktitle = {2025 62nd {{ACM}}/{{IEEE Design Automation Conference}} ({{DAC}})},
+  doi = {10.1109/DAC63849.2025.11132408},
+  month = {June},
+  pages = {1--7},
+  shorttitle = {{{PICK}}},
+  title = {{{PICK}}: {{An SRAM-based}} Processing-in-Memory Accelerator for {{K-nearest-neighbor}} Search in Point Clouds},
+  year = {2025}
+}
+
+@article{shin2IMNN2025,
+  author = {Shin, Jeongmin and Jeong, Hoichang and Kim, Seungbin and Park, Keonhee and Lee, Sangho and Lee, Kyuho Jason},
+  abstract = {This paper presents a content addressable memory (CAM)-based computing-in-memory (C2IM) system designed for energy-efficient k-nearest neighbor (k-NN) searching in 3D point clouds. The proposed C2IM processor enhances energy efficiency and reduces power consumption through three key features. Designed with 28 nm CMOS technology, the proposed C2IM achieves up to 23.08x energy efficiency, and 48.4\% reduction in memory footprint compared to previous ASIC accelerators.},
+  doi = {10.1109/TCSI.2024.3523525},
+  issn = {1558-0806},
+  journal = {IEEE Transactions on Circuits and Systems I: Regular Papers},
+  pages = {1--12},
+  shorttitle = {C {{\textsuperscript{2}}} {{IM-NN}}},
+  title = {C {{\textsuperscript{2}}} {{IM-NN}}: {{A}} Low-Power {{3D}} Point Clouds Matching Processor with {{1D-CNN}} Prediction and {{CAM-based}} in-Memory k-{{NN}} Searching},
+  year = {2025}
+}
+
+% ============================================================
+% HARDWARE ACCELERATION — KNN ACCELERATORS / KNN 加速器
+% ============================================================
+
+@inproceedings{chenParallelNNParallelOctreebased2023a,
+  author = {Chen, Faquan and Ying, Rendong and Xue, Jianwei and Wen, Fei and Liu, Peilin},
+  abstract = {This work considers the point cloud k-Nearest Neighbor (kNN) search, which is an important 3D processing kernel. We propose a highly parallel architecture, namely ParallelNN, for highly efficient kNN search processing of high throughput point clouds. ParallelNN achieves up to 107.7x and 12.1x speedup over CPU and GPU implementations, while being more energy efficient.},
+  booktitle = {2023 {{IEEE International Symposium}} on {{High-Performance Computer Architecture}} ({{HPCA}})},
+  doi = {10.1109/HPCA56546.2023.10070940},
+  month = {February},
+  pages = {403--414},
+  shorttitle = {{{ParallelNN}}},
+  title = {{{ParallelNN}}: {{A}} Parallel Octree-Based Nearest Neighbor Search Accelerator for {{3D}} Point Clouds},
+  year = {2023}
+}
+
+@inproceedings{hanBitNNBitserialAccelerator2024a,
+  author = {Han, Meng and Wang, Liang and Xiao, Limin and Zhang, Hao and Cai, Tianhao and Xu, Jiale and Wu, Yibo and Zhang, Chenhao and Xu, Xiangrong},
+  abstract = {In this work, we focus on point cloud k-Nearest Neighbor (kNN) search, an important kernel for point clouds. We propose BitNN, a bit-serial architecture for point cloud kNN search. BitNN supports adaptive precision processing and unnecessary computing reduction, significantly improving the performance and power efficiency of kNN search. BitNN achieves up to 6.6x speedup and 3.6x power efficiency compared to a comparable sized architecture.},
+  booktitle = {2024 {{ACM}}/{{IEEE}} 51st {{Annual International Symposium}} on {{Computer Architecture}} ({{ISCA}})},
+  doi = {10.1109/ISCA59077.2024.00095},
+  month = {June},
+  pages = {1278--1292},
+  shorttitle = {{{BitNN}}},
+  title = {{{BitNN}}: {{A}} Bit-Serial Accelerator for {{K-nearest}} Neighbor Search in Point Clouds},
+  year = {2024}
+}
+
+% ============================================================
+% BENCHMARKS AND DATASETS / 基准数据集
+% ============================================================
+
+@inproceedings{sturmBenchmarkEvaluationRGBD2012,
+  author = {Sturm, J{\"u}rgen and Engelhard, Nikolas and Endres, Felix and Burgard, Wolfram and Cremers, Daniel},
+  booktitle = {2012 {{IEEE}}/{{RSJ International Conference}} on {{Intelligent Robots}} and {{Systems}} ({{IROS}})},
+  doi = {10.1109/IROS.2012.6385773},
+  month = {October},
+  pages = {573--580},
+  publisher = {IEEE},
+  title = {A Benchmark for the Evaluation of {{RGB-D}} {{SLAM}} Systems},
+  year = {2012}
+}
+
+@inproceedings{zeng3DMatchLearningLocal2017,
+  author = {Zeng, Andy and Song, Shuran and Nie{\ss}ner, Matthias and Fisher, Matthew and Xiao, Jianxiong and Funkhouser, Thomas},
+  booktitle = {2017 {{IEEE}} Conference on {{Computer Vision}} and {{Pattern Recognition}} ({{CVPR}})},
+  doi = {10.1109/CVPR.2017.29},
+  month = {July},
+  pages = {199--208},
+  publisher = {IEEE},
+  title = {{{3DMatch}}: {{Learning Local Geometric Descriptors}} from {{RGB-D Reconstructions}}},
+  year = {2017}
+}
+
+@inproceedings{wu3DShapeNetsDeep2015,
+  author = {Wu, Zhirong and Song, Shuran and Khosla, Aditya and Yu, Fisher and Zhang, Linguang and Tang, Xiaoou and Xiao, Jianxiong},
+  booktitle = {2015 {{IEEE}} Conference on {{Computer Vision}} and {{Pattern Recognition}} ({{CVPR}})},
+  doi = {10.1109/CVPR.2015.7298801},
+  month = {June},
+  pages = {1912--1920},
+  publisher = {IEEE},
+  title = {{{3D}} {{ShapeNets}}: {{A Deep Representation}} for {{Volumetric Shapes}}},
+  year = {2015}
+}
+
+@article{yinM2DGRA2022,
+  author = {Yin, Jie and Li, Ang and Li, Tao and Yu, Wenxian and Zou, Danping},
+  doi = {10.1109/LRA.2021.3138527},
+  issn = {2377-3766, 2377-3774},
+  journal = {IEEE Robotics and Automation Letters},
+  month = {April},
+  number = {2},
+  pages = {2266--2273},
+  title = {{{M2DGR}}: {{A Multi-Sensor}} and {{Multi-Scenario SLAM Dataset}} for {{Ground Robots}}},
+  volume = {7},
+  year = {2022}
+}
+
+@article{geigerVisionMeetsRobotics2013,
+  author = {Geiger, A and Lenz, P and Stiller, C and Urtasun, R},
+  abstract = {We present a novel dataset captured from a VW station wagon for use in mobile robotics and autonomous driving research. In total, we recorded 6 hours of traffic scenarios at 10-100 Hz using a variety of sensor modalities such as high-resolution color and grayscale stereo cameras, a Velodyne 3D laser scanner and a high-precision GPS/IMU inertial navigation system.},
+  doi = {10.1177/0278364913491297},
+  issn = {0278-3649, 1741-3176},
+  journal = {The International Journal of Robotics Research},
+  month = {September},
+  number = {11},
+  pages = {1231--1237},
+  shorttitle = {Vision Meets Robotics},
+  title = {Vision Meets Robotics: {{The KITTI}} Dataset},
+  volume = {32},
+  year = {2013}
+}
+
+% ============================================================
+% SURVEYS / 综述
+% ============================================================
+
+@article{brightmanBriefOverviewCurrent2022,
+  author = {Brightman, N. and Fan, L.},
+  doi = {10.5194/isprs-annals-X-3-W1-2022-17-2022},
+  issn = {2194-9042},
+  journal = {ISPRS Annals of the Photogrammetry, Remote Sensing and Spatial Information Sciences},
+  month = {October},
+  pages = {17--23},
+  publisher = {Copernicus GmbH},
+  title = {A Brief Overview of the Current State, Challenging Issues and Future Directions of Point Cloud Registration},
+  volume = {X-3-W1-2022},
+  year = {2022}
+}
+
+@article{chengRegistrationLaserScanning2018,
+  author = {Cheng, Liang and Chen, Song and Liu, Xiaoqiang and Xu, Hao and Wu, Yang and Li, Manchun and Chen, Yanming},
+  doi = {10.3390/s18051641},
+  issn = {1424-8220},
+  journal = {Sensors},
+  month = {May},
+  number = {5},
+  pages = {1641},
+  title = {Registration of Laser Scanning Point Clouds: A Review},
+  volume = {18},
+  year = {2018}
+}
+
+@misc{yang20243dregistration30years,
+  title = {3D Registration in 30 Years: A Survey},
+  author = {Jiaqi Yang and Chu'ai Zhang and Zhengbao Wang and Xinyue Cao and Xuan Ouyang and Xiyu Zhang and Zhenxuan Zeng and Zhao Zeng and Borui Lu and Zhiyi Xia and Qian Zhang and Yulan Guo and Yanning Zhang},
+  year = {2024},
+  eprint = {2412.13735},
+  archivePrefix = {arXiv},
+  primaryClass = {cs.CV},
+  url = {https://arxiv.org/abs/2412.13735}
+}
+
+@article{pomerleauReviewPointCloud2015,
+  author = {Pomerleau, Fran{\c c}ois and Colas, Francis and Siegwart, Roland},
+  abstract = {A Review of Point Cloud Registration Algorithms for Mobile Robotics},
+  doi = {10.1561/2300000035},
+  issn = {1935-8253, 1935-8261},
+  journal = {Foundations and Trends\textregistered{} in Robotics},
+  month = {May},
+  number = {1},
+  pages = {1--104},
+  publisher = {Now Publishers, Inc.},
+  title = {A {{Review}} of {{Point Cloud Registration Algorithms}} for {{Mobile Robotics}}},
+  volume = {4},
+  year = {2015}
+}
+
+@inproceedings{zhangLOAMLidarOdometry2014,
+  author = {Zhang, Ji and Singh, Sanjiv},
+  booktitle = {Robotics: Science and Systems ({RSS})},
+  title = {{LOAM}: {LiDAR} Odometry and Mapping in Real-Time},
+  year = {2014}
+}
+
+@inproceedings{zhangVisuallidarOdometryMapping2015,
+  author = {Zhang, Ji and Singh, Sanjiv},
+  booktitle = {2015 {{IEEE International Conference}} on {{Robotics}} and {{Automation}} ({{ICRA}})},
+  doi = {10.1109/ICRA.2015.7139486},
+  issn = {1050-4729},
+  pages = {2174--2181},
+  shorttitle = {Visual-Lidar Odometry and Mapping},
+  title = {Visual-Lidar Odometry and Mapping: Low-Drift, Robust, and Fast},
+  year = {2015}
+}
+
+@article{tamRegistration3DPoint2013,
+  author = {Tam, G. K. L. and Cheng, Zhi-Quan and Lai, Yu-Kun and Langbein, Frank C. and Liu, Yonghuai and Marshall, David and Martin, Ralph R. and Sun, Xian-Fang and Rosin, Paul L.},
+  doi = {10.1109/TVCG.2012.310},
+  issn = {1077-2626},
+  journal = {IEEE Transactions on Visualization and Computer Graphics},
+  month = {July},
+  number = {7},
+  pages = {1199--1217},
+  title = {Registration of {{3D}} Point Clouds and Meshes: A Survey from Rigid to Nonrigid},
+  volume = {19},
+  year = {2013}
+}
+
+@article{xuPointCloudRegistrationISPRS2023,
+  author = {Xu, Ningli and Qin, Rongjun and Song, Shuang},
+  doi = {10.1016/j.ophoto.2023.100067},
+  journal = {ISPRS Open Journal of Photogrammetry and Remote Sensing},
+  pages = {100067},
+  title = {Point Cloud Registration for {LiDAR} and Photogrammetric Data: A Critical Synthesis and Performance Analysis on Classic and Deep Learning Algorithms},
+  volume = {9},
+  year = {2023}
+}
+
+@article{liuEnergyEfficientRuntime2023,
+  author = {Liu, Qiang and Hao, Yuhui and Liu, Weizhuang and Yu, Bo and Gan, Yiming and Tang, Jie and Liu, Shao-Shan and Zhu, Yuhao},
+  doi = {10.1109/TC.2022.3230899},
+  issn = {1557-9956},
+  journal = {IEEE Transactions on Computers},
+  month = {July},
+  number = {7},
+  pages = {1943--1957},
+  title = {An Energy Efficient and Runtime Reconfigurable Accelerator for Robotic Localization},
+  volume = {72},
+  year = {2023}
+}
+
+@article{malkovEfficientRobustApproximate2020,
+  author = {Malkov, Yu. A. and Yashunin, D. A.},
+  doi = {10.1109/TPAMI.2018.2889473},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  number = {4},
+  pages = {824--836},
+  title = {Efficient and Robust Approximate Nearest Neighbor Search Using Hierarchical Navigable Small World Graphs},
+  volume = {42},
+  year = {2020}
+}
+
+@inproceedings{nuchterCachedKdTree2007,
+  author = {N{\"u}chter, Andreas and Lingemann, Kai and Hertzberg, Joachim},
+  booktitle = {Sixth International Conference on 3-D Digital Imaging and Modeling (3DIM 2007)},
+  doi = {10.1109/3DIM.2007.15},
+  pages = {419--426},
+  title = {Cached {$k$}-d Tree Search for {ICP} Algorithms},
+  year = {2007}
+}
+
+@inproceedings{gelfandGeometricallyStableSampling2003,
+  author = {Gelfand, Natasha and Ikemoto, Leslie and Rusinkiewicz, Szymon and Levoy, Marc},
+  booktitle = {Proceedings of the Fourth International Conference on 3-D Digital Imaging and Modeling},
+  doi = {10.1109/IM.2003.1240258},
+  pages = {260--267},
+  title = {Geometrically Stable Sampling for the {ICP} Algorithm},
+  year = {2003}
+}
+
+@inproceedings{barnesExtendingGPURaytracing2024,
+  author = {Barnes, Aaron and Shen, Fangjia and Rogers, Timothy G.},
+  booktitle = {2024 57th {{IEEE}}/{{ACM International Symposium}} on {{Microarchitecture}} ({{MICRO}})},
+  doi = {10.1109/MICRO61859.2024.00079},
+  issn = {2379-3155},
+  month = {November},
+  pages = {1027--1040},
+  title = {Extending {{GPU}} Ray-Tracing Units for Hierarchical Search Acceleration},
+  year = {2024}
+}
+
+@inproceedings{dongGPUAcceleratedRobust2019,
+  author = {Dong, Wei and Park, Jaesik and Yang, Yi and Kaess, Michael},
+  booktitle = {2019 {{IEEE}}/{{RSJ International Conference}} on {{Intelligent Robots}} and {{Systems}} ({{IROS}})},
+  doi = {10.1109/IROS40897.2019.8967693},
+  issn = {2153-0866},
+  month = {November},
+  pages = {7863--7870},
+  title = {{{GPU}} Accelerated Robust Scene Reconstruction},
+  year = {2019}
+}
+
+@inproceedings{sunEA2DLSLAMEnvironmentAnalysisbased2025,
+  author = {Sun, Yan and Lin, Wanbiao and Shi, Bohan and Shen, Jiawei and Hu, Liangbo and Sun, Lei},
+  booktitle = {2025 {{IEEE International Conference}} on {{Real-time Computing}} and {{Robotics}} ({{RCAR}})},
+  doi = {10.1109/RCAR65431.2025.11139725},
+  month = {June},
+  pages = {1090--1095},
+  shorttitle = {{{EA2D-LSLAM}}},
+  title = {{{EA2D-LSLAM}}: {{Environment}} Analysis-Based Adaptive Downsampling for Point Clouds in {{LiDAR SLAM}}},
+  year = {2025}
+}
+
+@article{aokiPointNetLKRobustEfficient2019,
+  author = {Aoki, Yasuhiro and Goforth, Hunter and Srivatsan, Rangaprasad Arun and Lucey, Simon},
+  abstract = {PointNet has revolutionized how we think about representing point clouds. PointNetLK applies the Lucas and Kanade (LK) algorithm to PointNet's learned feature space for efficient point cloud registration. The architecture offers generalization across shape categories and computational efficiency.},
+  archiveprefix = {arXiv},
+  eprint = {1903.05711},
+  journal = {arXiv:1903.05711 [cs]},
+  month = {April},
+  primaryclass = {cs},
+  shorttitle = {{{PointNetLK}}},
+  title = {{{PointNetLK}}: {{Robust}} \& {{Efficient Point Cloud Registration}} Using {{PointNet}}},
+  year = {2019}
+}
+
+@article{pomerleauComparingICPVariants2013,
+  author = {Pomerleau, Fran{\c c}ois and Colas, Francis and Siegwart, Roland and Magnenat, St{\'e}phane},
+  abstract = {Many modern sensors used for mapping produce 3D point clouds, which are typically registered together using the iterative closest point (ICP) algorithm. Because ICP has many variants whose performances depend on the environment and the sensor, hundreds of variations have been published. The first contribution of this paper consists of a protocol that allows for a comparison between ICP variants, taking into account a broad range of inputs.},
+  doi = {10.1007/s10514-013-9327-2},
+  issn = {1573-7527},
+  journal = {Autonomous Robots},
+  month = {April},
+  number = {3},
+  pages = {133--148},
+  title = {Comparing {{ICP}} Variants on Real-World Data Sets},
+  volume = {34},
+  year = {2013}
+}
+
+@misc{tunaXICPLocalizabilityAwareLiDAR2022,
+  author = {Tuna, Turcan and Nubert, Julian and Nava, Yoshua and Khattak, Shehryar and Hutter, Marco},
+  doi = {10.48550/arXiv.2211.16335},
+  eprint = {2211.16335},
+  archiveprefix = {arXiv},
+  primaryclass = {cs},
+  shorttitle = {X-{{ICP}}},
+  title = {X-{{ICP}}: {{Localizability-Aware LiDAR Registration}} for {{Robust Localization}} in {{Extreme Environments}}},
+  year = {2022}
+}
+
+@article{tunaInformedConstrainedAligned2025,
+  author = {Tuna, Turcan and Nubert, Julian and Pfreundschuh, Patrick and Cadena, Cesar and Khattak, Shehryar and Hutter, Marco},
+  doi = {10.1109/TFR.2025.3576053},
+  issn = {2997-1101},
+  journal = {IEEE Transactions on Field Robotics},
+  pages = {485--515},
+  shorttitle = {Informed, {{Constrained}}, {{Aligned}}},
+  title = {Informed, {{Constrained}}, {{Aligned}}: {{A Field Analysis}} on {{Degeneracy-Aware Point Cloud Registration}} in the {{Wild}}},
+  volume = {2},
+  year = {2025}
+}
+
+@article{yueLPICPGeneralLocalizabilityAware2025,
+  author = {Yue, Haosong and Xu, Qingyuan and Chen, Fei and Pan, Jia and Chen, Weihai},
+  doi = {10.48550/ARXIV.2501.02580},
+  publisher = {arXiv},
+  shorttitle = {{{LP-ICP}}},
+  title = {{{LP-ICP}}: {{General Localizability-Aware Point Cloud Registration}} for {{Robust Localization}} in {{Extreme Unstructured Environments}}},
+  year = {2025}
+}
+
+@article{hatleskogProbabilisticDegeneracyDetection2024,
+  author = {Hatleskog, Johan and Alexis, Kostas},
+  doi = {10.1109/LRA.2024.3484153},
+  issn = {2377-3766},
+  journal = {IEEE Robotics and Automation Letters},
+  number = {12},
+  pages = {11234--11241},
+  title = {Probabilistic {{Degeneracy Detection}} for {{Point-to-Plane Error Minimization}}},
+  volume = {9},
+  year = {2024}
+}
+
+@inproceedings{jiPointtodistributionDegeneracyDetection2024,
+  author = {Ji, Sehua and Chen, Weinan and Su, Zerong and Guan, Yisheng and Li, Jiehao and Zhang, Hong and Zhu, Haifei},
+  booktitle = {2024 {{IEEE International Conference}} on {{Robotics}} and {{Automation}} ({{ICRA}})},
+  doi = {10.1109/ICRA57147.2024.10610340},
+  pages = {12283--12289},
+  title = {A Point-to-Distribution Degeneracy Detection Factor for {{LiDAR SLAM}} Using Local Geometric Models},
+  year = {2024}
+}
+
+@article{leeGenZICPGeneralizableDegeneracyRobust2025,
+  author = {Lee, Daehan and Lim, Hyungtae and Han, Soohee},
+  doi = {10.1109/LRA.2024.3498779},
+  issn = {2377-3766},
+  journal = {IEEE Robotics and Automation Letters},
+  number = {1},
+  pages = {152--159},
+  shorttitle = {{{GenZ-ICP}}},
+  title = {{{GenZ-ICP}}: {{Generalizable}} and {{Degeneracy-Robust LiDAR Odometry Using}} an {{Adaptive Weighting}}},
+  volume = {10},
+  year = {2025}
+}
+
+@inproceedings{hindujaDegeneracyAwareFactorsApplications2019,
+  author = {Hinduja, Akshay and Ho, Bing-Jui and Kaess, Michael},
+  booktitle = {2019 {{IEEE}}/{{RSJ International Conference}} on {{Intelligent Robots}} and {{Systems}} ({{IROS}})},
+  doi = {10.1109/IROS40897.2019.8968577},
+  issn = {2153-0866},
+  pages = {1293--1299},
+  title = {Degeneracy-{{Aware Factors}} with {{Applications}} to {{Underwater SLAM}}},
+  year = {2019}
+}
+
+@article{chandnaDAMMLOAMDegeneracyAware2025,
+  author = {Chandna, Nishant and Kaushal, Akshat},
+  doi = {10.48550/ARXIV.2510.13287},
+  publisher = {arXiv},
+  shorttitle = {{{DAMM-LOAM}}},
+  title = {{{DAMM-LOAM}}: {{Degeneracy}} Aware Multi-Metric {{LiDAR}} Odometry and Mapping},
+  year = {2025}
+}
+
+@article{wangRecentAdvancesSLAM2025,
+  author = {Wang, Wenda and Zhang, Qiuzhao and Hu, Yongfeng and Gallay, Michal and Zheng, Wen and Guo, Jianye},
+  doi = {10.1109/JSEN.2025.3584218},
+  issn = {1558-1748},
+  journal = {IEEE Sensors Journal},
+  number = {15},
+  pages = {27898--27921},
+  shorttitle = {Recent {{Advances}} in {{SLAM}} for {{Degraded Environments}}},
+  title = {Recent Advances in {{SLAM}} for Degraded Environments: {{A}} Review},
+  volume = {25},
+  year = {2025}
+}
+
+@inproceedings{zhangDegeneracyOptimizationBased2016,
+  author = {Zhang, Ji and Kaess, Michael and Singh, Sanjiv},
+  booktitle = {2016 {{IEEE International Conference}} on {{Robotics}} and {{Automation}} ({{ICRA}})},
+  pages = {809--816},
+  title = {On Degeneracy of Optimization-Based State Estimation Problems},
+  year = {2016}
+}
+
+@inproceedings{caesarNuScenesMultimodalDataset2020,
+  author = {Caesar, Holger and Bankiti, Varun and Lang, Alex H. and Vora, Sourabh and Liong, Venice Erin and Xu, Qiang and Krishnan, Anush and Pan, Yu and Baldan, Giancarlo and Beijbom, Oscar},
+  booktitle = {2020 {{IEEE}}/{{CVF}} Conference on {{Computer Vision}} and {{Pattern Recognition}} ({{CVPR}})},
+  doi = {10.1109/CVPR42600.2020.01164},
+  pages = {11618--11628},
+  publisher = {IEEE},
+  title = {nuScenes: A Multimodal Dataset for Autonomous Driving},
+  year = {2020}
+}
+
+@inproceedings{daiScanNetRichlyAnnotated2017,
+  author = {Dai, Angela and Chang, Angel X. and Savva, Manolis and Halber, Maciej and Funkhouser, Thomas and Niessner, Matthias},
+  booktitle = {2017 {{IEEE}} Conference on {{Computer Vision}} and {{Pattern Recognition}} ({{CVPR}})},
+  doi = {10.1109/CVPR.2017.261},
+  pages = {2432--2443},
+  publisher = {IEEE},
+  title = {ScanNet: Richly-Annotated 3D Reconstructions of Indoor Scenes},
+  year = {2017}
+}
+
+@inproceedings{sunScalabilityPerceptionWaymo2020,
+  author = {Sun, Pei and Kretzschmar, Henrik and Dotiwalla, Xerxes and Chouard, Aurelien and Patnaik, Vijaysai and Tsui, Paul and Guo, James and Zhou, Yin and Chai, Yuning and Caine, Benjamin and Vasudevan, Vijay and Han, Wei and Ngiam, Jiquan and Zhao, Hang and Timofeev, Aleksei and Ettinger, Scott and Krivokon, Maxim and Gao, Amy and Joshi, Aditya and Zhang, Yu and Shlens, Jonathon and Chen, Zhifeng and Anguelov, Dragomir},
+  booktitle = {2020 {{IEEE}}/{{CVF}} Conference on {{Computer Vision}} and {{Pattern Recognition}} ({{CVPR}})},
+  doi = {10.1109/CVPR42600.2020.00252},
+  pages = {2443--2451},
+  publisher = {IEEE},
+  title = {Scalability in Perception for Autonomous Driving: Waymo Open Dataset},
+  year = {2020}
+}
+
+@article{maddernOxfordRobotCarDataset2017,
+  author = {Maddern, Will and Pascoe, Geoffrey and Linegar, Chris and Newman, Paul},
+  doi = {10.1177/0278364916679498},
+  journal = {The International Journal of Robotics Research},
+  number = {1},
+  pages = {3--15},
+  publisher = {SAGE Publications},
+  title = {1 year, 1000 km: The Oxford RobotCar Dataset},
+  volume = {36},
+  year = {2017}
+}
+
+@inproceedings{kimMulRanMultimodalRange2020,
+  author = {Kim, Giseop and Park, Yeong Sang and Cho, Younghun and Jeong, Jinyong and Kim, Ayoung},
+  booktitle = {2020 {{IEEE International Conference}} on {{Robotics}} and {{Automation}} ({{ICRA}})},
+  doi = {10.1109/ICRA40945.2020.9197298},
+  pages = {6246--6253},
+  publisher = {IEEE},
+  title = {MulRan: Multimodal Range Dataset for Urban Place Recognition},
+  year = {2020}
+}
+
+@inproceedings{ramezaniNewerCollegeDataset2020,
+  author = {Ramezani, Milad and Wang, Yiduo and Camurri, Marco and Wisth, David and Mattamala, Matias and Fallon, Maurice},
+  booktitle = {2020 {{IEEE}}/{{RSJ International Conference}} on {{Intelligent Robots}} and {{Systems}} ({{IROS}})},
+  doi = {10.1109/IROS45743.2020.9340849},
+  pages = {4353--4360},
+  publisher = {IEEE},
+  title = {The Newer College Dataset: Handheld LiDAR, Inertial and Vision with Ground Truth},
+  year = {2020}
+}
+
+@inproceedings{choiRobustReconstructionIndoorScenes2015,
+  author = {Choi, Sungjoon and Zhou, Qian-Yi and Koltun, Vladlen},
+  booktitle = {2015 {{IEEE}} Conference on {{Computer Vision}} and {{Pattern Recognition}} ({{CVPR}})},
+  doi = {10.1109/CVPR.2015.7299195},
+  pages = {5556--5565},
+  publisher = {IEEE},
+  title = {Robust Reconstruction of Indoor Scenes},
+  year = {2015}
+}
+
+@inproceedings{parkisonSemanticIterativeClosest2018,
+  author = {Parkison, Steven A. and Gan, L. and Jadidi, M. G. and Eustice, R.},
+  booktitle = {{BMVC}},
+  title = {Semantic {{Iterative Closest Point}} through {{Expectation-Maximization}}},
+  year = {2018}
+}
+
+@article{zaganidisIntegratingDeepSemantic2018,
+  author = {Zaganidis, A. and Sun, Li and Duckett, T. and Cielniak, Grzegorz},
+  doi = {10.1109/LRA.2018.2848308},
+  journal = {IEEE Robotics and Automation Letters},
+  title = {Integrating {{Deep Semantic Segmentation Into}} 3-{{D Point Cloud Registration}}},
+  year = {2018}
+}
+
+@article{myronenkoPointSetRegistration2010,
+  author = {Myronenko, Andriy and {Xubo Song}},
+  doi = {10.1109/TPAMI.2010.46},
+  issn = {0162-8828},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  month = {December},
+  number = {12},
+  pages = {2262--2275},
+  shorttitle = {Point {{Set Registration}}},
+  title = {Point {{Set Registration}}: {{Coherent Point Drift}}},
+  volume = {32},
+  year = {2010}
+}
+
+@article{mavridisEfficientSparseICP2015,
+  author = {Mavridis, Pavlos and Andreadis, Anthousis and Papaioannou, Georgios},
+  doi = {10.1016/j.cagd.2015.03.022},
+  journal = {Computer Aided Geometric Design},
+  pages = {16--26},
+  title = {Efficient {Sparse} {ICP}},
+  volume = {35--36},
+  year = {2015}
+}
+
+@article{yangGraduatedNonConvexityRobust2020,
+  author = {Yang, Heng and Antonante, Pasquale and Tzoumas, Vasileios and Carlone, Luca},
+  doi = {10.1109/LRA.2020.2965893},
+  journal = {IEEE Robotics and Automation Letters},
+  number = {2},
+  pages = {1127--1134},
+  title = {Graduated {Non-Convexity} for Robust Spatial Perception: {From} Non-Minimal Solvers to Global Outlier Rejection},
+  volume = {5},
+  year = {2020}
+}
+
+@misc{vizzoKISSICPDefensePointtoPoint2022,
+  author = {Vizzo, Ignacio and Guadagnino, Tiziano and Mersch, Benedikt and Wiesmann, Louis and Behley, Jens and Stachniss, Cyrill},
+  doi = {10.48550/arXiv.2209.15397},
+  eprint = {2209.15397},
+  archiveprefix = {arXiv},
+  title = {{KISS-ICP}: In Defense of Point-to-Point {ICP} --- Simple, Accurate, and Robust Registration If Done the Right Way},
+  year = {2022}
+}
+
+@article{rosenSESyncCertifiablyCorrect2019,
+  author = {Rosen, David M. and Carlone, Luca and Bandeira, Afonso S. and Leonard, John J.},
+  doi = {10.1177/0278364918784361},
+  journal = {The International Journal of Robotics Research},
+  number = {2--3},
+  pages = {95--125},
+  title = {{SE-Sync}: A Certifiably Correct Algorithm for Synchronization over the Special {Euclidean} Group},
+  volume = {38},
+  year = {2019}
+}
+
+@article{kaessISAM2IncrementalSmoothing2012,
+  author = {Kaess, Michael and Johannsson, Hordur and Roberts, Richard and Ila, Viorela and Leonard, John J. and Dellaert, Frank},
+  doi = {10.1177/0278364911430419},
+  journal = {The International Journal of Robotics Research},
+  number = {2},
+  pages = {216--235},
+  title = {{iSAM2}: Incremental Smoothing and Mapping Using the {Bayes} Tree},
+  volume = {31},
+  year = {2012}
+}
+
+@article{dellaertFactorGraphsRobot2017,
+  author = {Dellaert, Frank and Kaess, Michael},
+  doi = {10.1561/2300000043},
+  journal = {Foundations and Trends in Robotics},
+  number = {1--2},
+  pages = {1--139},
+  title = {Factor Graphs for Robot Perception},
+  volume = {6},
+  year = {2017}
+}
+
+@inproceedings{shanLIOSAMTightlyCoupled2020,
+  author = {Shan, Tixiao and Englot, Brendan and Meyers, Drew and Wang, Wei and Ratti, Carlo and Rus, Daniela},
+  booktitle = {2020 {IEEE/RSJ} International Conference on Intelligent Robots and Systems ({IROS})},
+  doi = {10.1109/IROS45743.2020.9341176},
+  pages = {5135--5142},
+  title = {{LIO-SAM}: Tightly-Coupled Lidar Inertial Odometry via Smoothing and Mapping},
+  year = {2020}
+}
+
+@inproceedings{kummerleG2oGeneralFramework2011,
+  author = {K{\"u}mmerle, Rainer and Grisetti, Giorgio and Strasdat, Hauke and Konolige, Kurt and Burgard, Wolfram},
+  booktitle = {2011 {IEEE} International Conference on Robotics and Automation ({ICRA})},
+  doi = {10.1109/ICRA.2011.5979949},
+  pages = {3607--3613},
+  title = {g2o: A General Framework for Graph Optimization},
+  year = {2011}
+}
+
+@misc{solaMicroLieTheory2018,
+  author = {Sola, Joan and Deray, Jeremie and Atchuthan, Dinesh},
+  eprint = {1812.01537},
+  archiveprefix = {arXiv},
+  title = {A Micro {Lie} Theory for State Estimation in Robotics},
+  year = {2018}
+}
+
+@article{aiger4pointsCongruentSets2008,
+  author = {Aiger, Dror and Mitra, Niloy J. and Cohen-Or, Daniel},
+  doi = {10.1145/1360612.1360684},
+  journal = {ACM Transactions on Graphics},
+  number = {3},
+  pages = {1--10},
+  title = {4-Points Congruent Sets for Robust Pairwise Surface Registration},
+  volume = {27},
+  year = {2008}
+}
+
+@article{melladoSuper4PCSFast2014,
+  author = {Mellado, Nicolas and Aiger, Dror and Mitra, Niloy J.},
+  doi = {10.1111/cgf.12446},
+  journal = {Computer Graphics Forum},
+  number = {5},
+  pages = {205--215},
+  title = {Super {4PCS} Fast Global Pointcloud Registration via Smart Indexing},
+  volume = {33},
+  year = {2014}
+}
+
+@article{andersonIterativeProceduresNonlinear1965,
+  author = {Anderson, Donald G.},
+  journal = {Journal of the ACM},
+  number = {4},
+  pages = {547--560},
+  title = {Iterative Procedures for Nonlinear Integral Equations},
+  volume = {12},
+  year = {1965}
+}
+
+@misc{qiPointNetDeepLearning2016,
+  author = {Qi, Charles R. and Su, Hao and Mo, Kaichun and Guibas, Leonidas J.},
+  eprint = {1612.00593},
+  archiveprefix = {arXiv},
+  title = {PointNet: Deep Learning on Point Sets for {3D} Classification and Segmentation},
+  year = {2016}
+}
+
+@inproceedings{huangPredatorRegistration3D2021,
+  author = {Huang, Shengyu and Gojcic, Zan and Usvyatsov, Mikhail and Wieser, Andreas and Schindler, Konrad},
+  booktitle = {2021 {IEEE/CVF} Conference on Computer Vision and Pattern Recognition ({CVPR})},
+  doi = {10.1109/CVPR46437.2021.00425},
+  pages = {4265--4274},
+  title = {{PREDATOR}: Registration of {3D} Point Clouds With Low Overlap},
+  year = {2021}
+}
+
+@inproceedings{yuCoFiNetReliableCoarsetofine2021,
+  author = {Yu, Haoyu and Li, Fang and Saleh, Mohamad and Busam, Benjamin and Ilic, Slobodan},
+  booktitle = {Advances in Neural Information Processing Systems 34 ({NeurIPS} 2021)},
+  pages = {23872--23884},
+  title = {{CoFiNet}: Reliable Coarse-to-Fine Correspondences for Robust Point Cloud Registration},
+  year = {2021}
+}
+
+@inproceedings{censiAccurateClosedformEstimate2007,
+  title = {An Accurate Closed-Form Estimate of {ICP}'s Covariance},
+  author = {Censi, Andrea},
+  booktitle = {Proceedings 2007 {IEEE} International Conference on Robotics and Automation ({ICRA})},
+  year = {2007},
+  pages = {3167--3172},
+  publisher = {IEEE},
+  doi = {10.1109/ROBOT.2007.363961},
+  url = {https://doi.org/10.1109/ROBOT.2007.363961}
+}
