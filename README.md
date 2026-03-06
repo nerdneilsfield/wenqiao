@@ -199,6 +199,7 @@ Options:
   --generate-figures                  Enable AI figure generation
   --figures-config PATH               Runner config (TOML)
   --force-regenerate                  Re-generate existing images
+  --concurrency INTEGER               Max concurrent figure generations (default: 4)
   --strict                            Strict parsing mode
   --verbose                           Verbose output
   --dump-east                         Dump Enhanced AST as JSON
@@ -214,6 +215,25 @@ Options:
   --template PATH  LaTeX template file (.yaml)
   --strict         Exit 1 on any diagnostic warnings
   --verbose        Show all diagnostics
+```
+
+**generate**:
+```
+Usage: wenqiao generate [OPTIONS] INPUT
+
+  Generate AI figures in a .mid.md file concurrently.
+
+Options:
+  --figures-config PATH      TOML config for AI backend (API key, model, URL)
+  --model TEXT               Override model name from config
+  --base-url TEXT            Override API base URL
+  --api-key TEXT             API key (also reads WENQIAO_API_KEY env var)
+  --type [openai]            Backend type (default: openai)
+  --concurrency INTEGER      Max concurrent generations, must be >= 1 (default: 4)
+  --start-id INTEGER         Start figure index, 1-based inclusive (default: 1)
+  --end-id INTEGER           End figure index, 1-based inclusive (default: last)
+  --force                    Re-generate even if output file exists
+  --no-writeback             Skip writing <!-- ai-done: true --> to source file
 ```
 
 **format**:

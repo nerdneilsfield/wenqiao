@@ -135,6 +135,19 @@ $$
 - Add `<!-- label: eq:... -->` after block math for numbered equations
 - No label = unnumbered equation
 
+> **⚠️ CRITICAL — single backslash only (严禁双反斜杠)**
+> LaTeX commands inside `$...$` or `$$...$$` use a **single** `\` — never double.
+> Writing `\\mathbf` or `\\frac` is **WRONG**; it produces a literal backslash + text.
+>
+> | ✅ Correct | ❌ Wrong |
+> |-----------|---------|
+> | `$\mathbf{R}$` | `$\\mathbf{R}$` |
+> | `$\frac{1}{2}$` | `$\\frac{1}{2}$` |
+> | `$\sum_{i}$` | `$\\sum_{i}$` |
+> | `$\| x \|$` | `$\\| x \\|$` |
+>
+> If you see `\\` anywhere inside a math block, it is a bug — delete the extra `\`.
+
 ### 6. Tables — GFM pipe syntax + attach-up
 
 ```markdown
@@ -257,7 +270,7 @@ When writing a **test fixture** or **comprehensive example**, ensure you exercis
 - [ ] Multi-key citation: `[X](cite:a,b,c)`
 - [ ] Citation with `?cmd=`: at least `citet` and `citep`
 - [ ] Cross-references to sections, figures, tables, equations
-- [ ] Figure with `caption`, `label`, `width`
+- [ ] Figure with `caption`, `label`, `width` (and optionally `height`)
 - [ ] AI-generated figure with `ai-*` directives
 - [ ] Table with `caption` and `label`
 - [ ] Table with alignment (left/center/right columns)

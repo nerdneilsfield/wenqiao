@@ -205,6 +205,7 @@ Standard Markdown image syntax, with metadata comments attached below:
 | `caption` | `string` | Figure caption (图片标题) |
 | `label` | `string` | Cross-reference label, e.g. `fig:xxx` (交叉引用标签) |
 | `width` | `string` | Width specification (宽度), e.g. `0.8\textwidth` |
+| `height` | `string` | Height specification (高度), e.g. `60mm` (can combine with width) |
 | `placement` | `string` | Float placement (浮动位置), e.g. `htbp` |
 | `centering` | `bool` | Center the figure (居中), default behavior |
 
@@ -233,7 +234,7 @@ Add `ai-*` directives to mark a figure for AI generation:
 | `ai-model` | `string` | Model name override (模型名覆盖) |
 | `ai-prompt` | `string` | Generation prompt (生成提示词) |
 | `ai-negative-prompt` | `string` | Negative prompt (负向提示词) |
-| `ai-params` | `dict` | Extra generation parameters (额外参数) |
+| `ai-params` | `dict` | Extra kwargs passed to `chat.completions.create()`, e.g. `{size: "1024x1024", quality: hd}` (额外参数，透传给生成 API) |
 
 ---
 
