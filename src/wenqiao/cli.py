@@ -6,6 +6,7 @@ Backward-compatible: ``wenqiao file.mid.md`` defaults to ``convert``.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import sys
 from pathlib import Path
@@ -158,6 +159,13 @@ def cli(ctx: click.Context) -> None:
     default=False,
     help="Re-generate AI figures even if image files already exist (强制重新生成已有图片)",
 )
+@click.option(
+    "--concurrency",
+    "concurrency",
+    default=4,
+    show_default=True,
+    help="Max concurrent figure generations (最大并发图片生成数)",
+)
 def convert_cmd(
     input: Path,
     target: str | None,
@@ -176,6 +184,7 @@ def convert_cmd(
     generate_figures: bool,
     figures_config: Path | None,
     force_regenerate: bool,
+    concurrency: int,
 ) -> None:
     """Convert academic Markdown to LaTeX/Markdown/HTML.
 
@@ -247,19 +256,23 @@ def convert_cmd(
 
     # Optional AI figure generation (可选 AI 图片生成)
     if generate_figures:
-        from wenqiao.genfig import run_generate_figures
+        from wenqiao.genfig import collect_jobs, run_generate_figures_async
         from wenqiao.genfig_openai import OpenAIFigureRunner
 
         base_dir = Path(filename).parent if filename != "<stdin>" else Path.cwd()
         runner = OpenAIFigureRunner(config=figures_config)
 
         try:
-            success, fail = run_generate_figures(
-                east,
-                base_dir=base_dir,
-                runner=runner,
-                force=force_regenerate,
-                echo=lambda msg: click.echo(msg, err=True),
+            jobs = collect_jobs(east, base_dir=base_dir, force=True)
+            success, fail = asyncio.run(
+                run_generate_figures_async(
+                    jobs,
+                    runner,
+                    concurrency=concurrency,
+                    force=force_regenerate,
+                    writeback=False,  # convert does not write back to source (convert 不写回)
+                    echo=lambda msg: click.echo(msg, err=True),
+                )
             )
         except (ImportError, OSError) as e:
             click.echo(f"[generate-figures] Runner failed: {e}", err=True)

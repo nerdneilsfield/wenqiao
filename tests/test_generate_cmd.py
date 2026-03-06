@@ -145,3 +145,49 @@ class TestGenerateCmd:
         ]
         for opt in opts:
             assert opt in result.output, f"Missing option: {opt}"
+
+    def test_convert_concurrency_option_exists(self) -> None:
+        """convert --help shows --concurrency option (--concurrency 选项存在)."""
+        result = CliRunner().invoke(main, ["convert", "--help"])
+        assert result.exit_code == 0
+        assert "--concurrency" in result.output
+
+    def test_convert_generates_figures_async(self, tmp_path: Path) -> None:
+        """convert --generate-figures uses async runner (convert 使用异步 runner)."""
+        src = tmp_path / "doc.mid.md"
+        # Use multi-figure format so the comment parser attaches AI metadata to the image
+        # (使用多图格式，确保注释解析器将 AI 元数据挂到图片节点上)
+        md = ""
+        for i in range(1, 3):
+            md += (
+                f"<!-- label: fig:f{i} -->\n"
+                f"<!-- ai-generated: true -->\n"
+                f"<!-- ai-prompt: fig {i} -->\n"
+                f"![f{i}](fig-{i}.png)\n\n"
+            )
+        src.write_text(f"# Test\n\n{md}")
+
+        def fake_generate(job: FigureJob) -> bool:
+            job.output_path.parent.mkdir(parents=True, exist_ok=True)
+            job.output_path.write_bytes(b"PNG")
+            return True
+
+        # Patch at the module where OpenAIFigureRunner is defined
+        # (在定义 OpenAIFigureRunner 的模块处打补丁)
+        with patch("wenqiao.genfig_openai.OpenAIFigureRunner") as MockRunner:
+            instance = MockRunner.return_value
+            instance.generate.side_effect = fake_generate
+            instance.async_generate = AsyncMock(side_effect=fake_generate)
+
+            result = CliRunner().invoke(
+                main,
+                [
+                    "convert", str(src),
+                    "--generate-figures",
+                    "--concurrency", "2",
+                    "-o", str(tmp_path / "out.tex"),
+                ],
+            )
+
+        assert result.exit_code == 0
+        instance.async_generate.assert_called()
