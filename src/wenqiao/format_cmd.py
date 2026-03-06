@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from difflib import SequenceMatcher
 from pathlib import Path
 
 import click
@@ -89,6 +90,54 @@ def _run_rumdl(text: str) -> str:
         tmp_path.unlink(missing_ok=True)
 
 
+def _format_signed(n: int) -> str:
+    """Format signed integer for human-readable stats output."""
+    return f"+{n}" if n >= 0 else str(n)
+
+
+def _compute_line_change_stats(before: str, after: str) -> tuple[int, int, int]:
+    """Compute changed blocks and +/- line counts.
+
+    Returns:
+        (changed_blocks, added_lines, removed_lines)
+    """
+    before_lines = before.splitlines()
+    after_lines = after.splitlines()
+    matcher = SequenceMatcher(a=before_lines, b=after_lines)
+    changed_blocks = 0
+    added = 0
+    removed = 0
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == "equal":
+            continue
+        changed_blocks += 1
+        if tag in ("insert", "replace"):
+            added += j2 - j1
+        if tag in ("delete", "replace"):
+            removed += i2 - i1
+    return changed_blocks, added, removed
+
+
+def _emit_stats(before: str, after: str, *, target: Path, changed: bool) -> None:
+    """Print formatting stats (输出格式化统计信息)."""
+    before_lines = len(before.splitlines())
+    after_lines = len(after.splitlines())
+    before_chars = len(before)
+    after_chars = len(after)
+    blocks, added, removed = _compute_line_change_stats(before, after)
+    delta_lines = after_lines - before_lines
+    delta_chars = after_chars - before_chars
+
+    click.echo(
+        "[format] Stats "
+        f"file={target} changed={str(changed).lower()} "
+        f"lines={before_lines}->{after_lines} ({_format_signed(delta_lines)}) "
+        f"chars={before_chars}->{after_chars} ({_format_signed(delta_chars)}) "
+        f"diff=+{added}/-{removed} blocks={blocks}",
+        err=True,
+    )
+
+
 @click.command("format")
 @click.argument("input", type=click.Path(exists=True, path_type=Path))
 @click.option(
@@ -118,12 +167,20 @@ def _run_rumdl(text: str) -> str:
     default=False,
     help="Skip rumdl formatting step (跳过 rumdl 格式化步骤)",
 )
+@click.option(
+    "--stats",
+    "show_stats",
+    is_flag=True,
+    default=False,
+    help="Show formatting statistics (显示格式化统计信息)",
+)
 def format_cmd(
     input: Path,
     output: Path | None,
     check: bool,
     show_diff: bool,
     skip_rumdl: bool,
+    show_stats: bool,
 ) -> None:
     """Format an academic Markdown file (格式化学术 Markdown 文件).
 
@@ -175,6 +232,9 @@ def format_cmd(
             click.echo(f"{input}: ok", err=True)
         else:
             click.echo(f"{input}: needs formatting (需要格式化)", err=True)
+        if show_stats:
+            _emit_stats(original, formatted, target=input, changed=not is_clean)
+        if not is_clean:
             raise SystemExit(1)
         return
 
@@ -182,3 +242,5 @@ def format_cmd(
     target = output if output is not None else input
     target.write_text(formatted, encoding="utf-8")
     click.echo(f"Formatted {target}")
+    if show_stats:
+        _emit_stats(original, formatted, target=target, changed=not is_clean)
