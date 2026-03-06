@@ -222,39 +222,54 @@ class LaTeXBlockMixin:
         label = str(meta.get("label", ""))
         placement = str(meta.get("placement", "htbp"))
 
-        # Column alignment spec (列对齐格式)
-        align_map = {"left": "l", "right": "r", "center": "c"}
+        # Column alignment spec — center is mapped to left because academic
+        # text tables read better left-aligned; right is kept for numeric columns.
+        # (列对齐格式：center 映射为 l，学术文本列居左更清晰；右对齐保留给数字列)
+        align_map = {"left": "l", "right": "r", "center": "l"}
         col_spec = "".join(align_map.get(a, "l") for a in tbl.alignments)
         if not col_spec:
             col_spec = "l" * len(tbl.headers)
 
-        # Build the tabular body (构建 tabular 主体)
+        # Step 1: Render and wrap all cells first so that the subsequent width
+        # estimation reflects the actual line-broken content, not the raw text.
+        # (先渲染并换行所有单元格，后续宽度估算基于换行后的实际内容)
+        wrapped_headers = [
+            self._wrap_cell(self._render_nodes(h)) for h in tbl.headers
+        ]
+        wrapped_rows = [
+            [self._wrap_cell(self._render_nodes(cell)) for cell in row]
+            for row in tbl.rows
+        ]
+
+        # Step 2: Estimate table width from wrapped cells.
+        # Use _wrapped_cell_width so \makecell cells contribute only their
+        # longest single line, not the full pre-wrap length.
+        # (用换行后内容估算宽度：\makecell 单元格取最长单行)
+        n_cols = len(tbl.headers)
+        estimated_width = 0
+        for i in range(n_cols):
+            col_max = self._wrapped_cell_width(wrapped_headers[i])
+            for wrow in wrapped_rows:
+                if i < len(wrow):
+                    col_max = max(col_max, self._wrapped_cell_width(wrow[i]))
+            estimated_width += col_max
+
+        # Step 3: Build the tabular body from pre-wrapped cells.
+        # (用已换行的单元格构建 tabular 主体)
         tabular_lines: list[str] = [f"\\begin{{tabular}}{{{col_spec}}}"]
         tabular_lines.append("\\hline")
-
-        # Header row — wrap long header cells (表头行，超长内容换行)
-        header_row = " & ".join(
-            self._wrap_cell(self._render_nodes(h)) for h in tbl.headers
-        )
-        tabular_lines.append(f"{header_row} \\\\")
+        tabular_lines.append(f"{' & '.join(wrapped_headers)} \\\\")
         tabular_lines.append("\\hline")
-
-        # Data rows — wrap long data cells (数据行，超长内容换行)
-        for row in tbl.rows:
-            data_row = " & ".join(
-                self._wrap_cell(self._render_nodes(cell)) for cell in row
-            )
-            tabular_lines.append(f"{data_row} \\\\")
-
+        for wrow in wrapped_rows:
+            tabular_lines.append(f"{' & '.join(wrow)} \\\\")
         tabular_lines.append("\\hline")
         tabular_lines.append("\\end{tabular}")
         tabular_body = "\n".join(tabular_lines)
 
-        # Auto-scale wide tables by computing an explicit scale factor.
+        # Step 4: Apply \scalebox if the wrapped table is still too wide.
         # scale = text_width_chars / estimated_width, clamped to [min, 1.0].
-        # Using \scalebox so the factor is visible in the .tex output and can
-        # be manually adjusted if needed. (通过估算宽度计算缩放因子，写入 .tex 便于手动微调。)
-        estimated_width = self._estimate_table_width(tbl)
+        # Factor is written into .tex for manual tuning.
+        # (换行后仍过宽时套 \scalebox；因子写入 .tex 便于手动微调)
         if estimated_width > self._TABLE_TEXT_WIDTH_CHARS:
             raw_scale = self._TABLE_TEXT_WIDTH_CHARS / estimated_width
             scale = round(max(self._TABLE_MIN_SCALE, min(1.0, raw_scale)), 2)
@@ -273,6 +288,30 @@ class LaTeXBlockMixin:
     def _render_nodes(self, nodes: list[Node]) -> str:
         """Render a list of inline nodes (渲染行内节点列表)."""
         return "".join(self.render(n) for n in nodes)
+
+    def _wrapped_cell_width(self, wrapped: str) -> int:
+        """Return the max single-line display width of a (possibly wrapped) cell.
+
+        For plain cells, returns _display_width(wrapped).
+        For \\makecell[t]{line1\\\\\\\\line2\\\\\\\\...} cells produced by _wrap_cell,
+        extracts the logical lines and returns the max display width among them.
+        This reflects the actual column footprint after line-breaking.
+        (返回 wrap 后单元格的最大单行宽度，\\makecell 单元格取各行最大值)
+
+        Args:
+            wrapped: Output of _wrap_cell (已 wrap 的单元格文本)
+
+        Returns:
+            Max single-line display width (最大单行显示宽度)
+        """
+        prefix = "\\makecell[t]{"
+        if not wrapped.startswith(prefix):
+            return self._display_width(wrapped)
+        # Extract content between outer braces (提取外层花括号内容)
+        inner = wrapped[len(prefix) : -1]
+        # Lines are separated by \\\\ (possibly followed by \n) (行由 \\\\ 分隔)
+        logical_lines = inner.split("\\\\\n")
+        return max((self._display_width(ln) for ln in logical_lines), default=0)
 
     def _wrap_cell(self, text: str) -> str:
         """Wrap long table cell content with \\makecell line breaks.
