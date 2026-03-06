@@ -76,13 +76,14 @@ def parse_bib(bib_text: str) -> dict[str, str]:
     """
     result: dict[str, str] = {}
     for entry_match in _ENTRY_START_RE.finditer(bib_text):
+        entry_type = entry_match.group(1).strip().lower()
         key = entry_match.group(2).strip()
         # 从逗号之后开始查找条目体 (Find body starting after comma)
         body = _find_entry_body(bib_text, entry_match.end())
         if body is None:
             continue
         fields = _extract_fields(body)
-        result[key] = _format_entry(fields)
+        result[key] = _format_entry(fields, entry_type=entry_type)
     return result
 
 
@@ -97,40 +98,92 @@ def _extract_fields(fields_text: str) -> dict[str, str]:
     return fields
 
 
-def _format_entry(fields: dict[str, str]) -> str:
-    """将字段字典格式化为一行引用字符串。
+def _normalize_whitespace(text: str) -> str:
+    """Collapse repeated whitespace and strip braces (合并空白并去掉花括号)."""
+    return re.sub(r"\s+", " ", text.replace("{", "").replace("}", "")).strip()
 
-    Format field dict to one-line citation string.
-    """
+
+def _format_person_ieee(name: str) -> str:
+    """Format one author name to IEEE-like initials + family name (作者名 IEEE 风格化)."""
+    n = _normalize_whitespace(name)
+    if not n:
+        return ""
+
+    given: list[str]
+    family: str
+    if "," in n:
+        parts = [p.strip() for p in n.split(",", 1)]
+        family = parts[0]
+        given = parts[1].split() if len(parts) > 1 else []
+    else:
+        words = n.split()
+        if len(words) == 1:
+            return words[0]
+        family = words[-1]
+        given = words[:-1]
+
+    initials = " ".join(f"{w[0].upper()}." for w in given if w)
+    if initials:
+        return f"{initials} {family}"
+    return family
+
+
+def _format_authors_ieee(author_field: str) -> str:
+    """Format BibTeX author field to IEEE-like author list (作者列表 IEEE 风格)."""
+    authors = [_format_person_ieee(a) for a in author_field.split(" and ")]
+    authors = [a for a in authors if a]
+    if not authors:
+        return ""
+    if len(authors) == 1:
+        return authors[0]
+    if len(authors) == 2:
+        return f"{authors[0]} and {authors[1]}"
+    if len(authors) <= 3:
+        return ", ".join(authors[:-1]) + f", and {authors[-1]}"
+    return f"{authors[0]} et al."
+
+
+def _format_entry(fields: dict[str, str], *, entry_type: str) -> str:
+    """Format fields to a one-line IEEE-like reference string (一行 IEEE 风格引用)."""
     parts: list[str] = []
 
-    # 作者（取第一作者 last name）(Author: first author last name)
-    if author := fields.get("author", ""):
-        first_author = author.split(" and ")[0].strip()
-        # "Last, First" 或 "First Last" 格式
-        # ("Last, First" or "First Last" format)
-        if "," in first_author:
-            last_name = first_author.split(",")[0].strip()
+    authors = _format_authors_ieee(fields.get("author", ""))
+    if authors:
+        parts.append(authors)
+
+    title = _normalize_whitespace(fields.get("title", ""))
+    if title:
+        if entry_type == "book":
+            parts.append(title)
         else:
-            name_parts = first_author.split()
-            last_name = name_parts[-1] if name_parts else first_author
-        n_authors = len(author.split(" and "))
-        suffix = " et al." if n_authors > 1 else ""
-        parts.append(f"{last_name}{suffix}")
+            parts.append(f'"{title}"')
 
-    # 标题 (Title)
-    if title := fields.get("title", ""):
-        parts.append(f'"{title}"')
-
-    # 期刊/会议 (Journal or booktitle)
-    venue = fields.get("journal") or fields.get("booktitle") or ""
+    venue = _normalize_whitespace(
+        fields.get("journal") or fields.get("booktitle") or fields.get("publisher") or ""
+    )
     if venue:
-        parts.append(venue)
+        if entry_type == "inproceedings":
+            parts.append(f"in {venue}")
+        else:
+            parts.append(venue)
 
-    # 年份 (Year)
-    if year := fields.get("year", ""):
+    volume = _normalize_whitespace(fields.get("volume", ""))
+    if volume:
+        parts.append(f"vol. {volume}")
+
+    number = _normalize_whitespace(fields.get("number", ""))
+    if number:
+        parts.append(f"no. {number}")
+
+    pages = _normalize_whitespace(fields.get("pages", ""))
+    if pages:
+        parts.append(f"pp. {pages}")
+
+    year = _normalize_whitespace(fields.get("year", ""))
+    if year:
         parts.append(year)
 
-    # 去除末尾句号以避免 "et al.." 双句号 (Strip trailing period to avoid double period)
-    cleaned = [p.rstrip(".") for p in parts]
-    return ". ".join(cleaned) + "." if cleaned else ""
+    cleaned = [p.rstrip(".,; ") for p in parts if p]
+    if not cleaned:
+        return ""
+    return ", ".join(cleaned) + "."
