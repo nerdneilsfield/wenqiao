@@ -161,6 +161,32 @@ class TestCollectJobs:
         jobs = collect_jobs(d, base_dir=tmp_path)
         assert len(jobs) == 0
 
+    def test_collect_jobs_populates_label_from_metadata(self) -> None:
+        """label is taken from node.metadata["label"] when present (label 来自元数据)."""
+        # Build a Figure with explicit label in metadata (构建含显式 label 元数据的 Figure)
+        fig = Figure(
+            src="diagram.png",
+            alt="alt",
+            metadata={"ai": {"generated": True, "prompt": "flowchart"}, "label": "fig:diagram"},
+        )
+        d = Document(children=[fig])
+        jobs = collect_jobs(d, base_dir=Path("/tmp"))
+        assert len(jobs) == 1
+        assert jobs[0].label == "fig:diagram"
+
+    def test_collect_jobs_label_falls_back_to_src(self) -> None:
+        """label falls back to src when "label" key is absent from metadata (缺失时回退到 src)."""
+        # Build a Figure with no label in metadata (构建无 label 元数据的 Figure)
+        fig = Figure(
+            src="diagram.png",
+            alt="alt",
+            metadata={"ai": {"generated": True, "prompt": "flowchart"}},
+        )
+        d = Document(children=[fig])
+        jobs = collect_jobs(d, base_dir=Path("/tmp"))
+        assert len(jobs) == 1
+        assert jobs[0].label == jobs[0].src
+
 
 # ── generate_figure_job ──────────────────────────────────────────────────────
 
@@ -259,16 +285,19 @@ class TestGenerateFigureJob:
 # ── FigureJob field extensions ────────────────────────────────────────────────
 
 
-def test_figure_job_has_label_field() -> None:
-    """FigureJob exposes label and source_file fields (FigureJob 含 label/source_file 字段)."""
-    job = FigureJob(
-        src="fig1.png",
-        output_path=Path("/tmp/fig1.png"),
-        prompt="a cat",
-        model=None,
-        params=None,
-        label="fig:cat",
-        source_file=None,
-    )
-    assert job.label == "fig:cat"
-    assert job.source_file is None
+class TestFigureJobFields:
+    """FigureJob dataclass field coverage (FigureJob 数据类字段覆盖测试)."""
+
+    def test_figure_job_has_label_field(self) -> None:
+        """FigureJob exposes label and source_file fields (FigureJob 含 label/source_file 字段)."""
+        job = FigureJob(
+            src="fig1.png",
+            output_path=Path("/tmp/fig1.png"),
+            prompt="a cat",
+            model=None,
+            params=None,
+            label="fig:cat",
+            source_file=None,
+        )
+        assert job.label == "fig:cat"
+        assert job.source_file is None
