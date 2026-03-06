@@ -159,6 +159,9 @@ wenqiao validate paper.mid.md --bib refs.bib --strict
 # Check formatting (exit 1 if unformatted)
 wenqiao format paper.mid.md --check --diff
 
+# Format with change statistics
+wenqiao format paper.mid.md --stats
+
 # Read from stdin, body-only mode
 cat paper.mid.md | wenqiao - --mode body -o paper.tex
 
@@ -244,6 +247,8 @@ Options:
   -o, --output PATH  Output path (default: overwrite input)
   --check            Check only, exit 1 if unformatted
   --diff             Show unified diff of changes
+  --no-rumdl         Skip rumdl formatting step
+  --stats            Show formatting statistics
 ```
 
 </details>
@@ -406,6 +411,13 @@ except ConversionError as e:
 
 Round-trip normalization: parse → render back as Markdown. Idempotent — formatting
 an already-formatted document returns the same text.
+
+Built-in normalization includes common math cleanup used by `wenqiao format`,
+including:
+- Unicode math operators to LaTeX (`≤`→`$\\leq$`, in math spans to `\\leq`)
+- Bare Greek letters to LaTeX (`σ`→`$\\sigma$`, in math spans to `\\sigma`)
+- Unicode super/subscripts (`m²`→`$m^2$`, `x₀`→`$x_0$`)
+- Blank-line separation around display-math blocks delimited by standalone `$$`
 
 ```python
 from wenqiao import format_text

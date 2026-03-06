@@ -75,6 +75,30 @@ Block:  $$ ... $$                    [^1]: Footnote content.
 - Duplicate directives are ignored with a warning — use each key only once
 - The `abstract` value uses YAML `|` (literal block scalar) for multiline text
 
+#### Preamble Output Order (Critical for LaTeX Compilation)
+
+When the converter generates LaTeX preamble, the output order is:
+
+```latex
+% 1. Document class
+\documentclass[...]{...}
+
+% 2. Packages (from `packages` directive)
+\usepackage{xeCJK}
+\usepackage{amsmath}
+...
+
+% 3. Preamble content (from `preamble` directive)
+% Custom commands, settings, etc.
+
+% 4. Title/Author/Date metadata
+\title{...}
+\author{...}
+\date{...}
+```
+
+**Important**: `\usepackage{xeCJK}` and other packages are output **before** `\title`/ `\author`/ `\date`. This ensures CJK character handling is configured before any metadata that may contain Unicode characters.
+
 ### 2. Labels — Attach BELOW the target node
 
 ```markdown

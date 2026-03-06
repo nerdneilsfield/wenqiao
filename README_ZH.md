@@ -157,6 +157,9 @@ wenqiao validate paper.mid.md --bib refs.bib --strict
 # 检查格式化状态（未格式化时退出码 1）
 wenqiao format paper.mid.md --check --diff
 
+# 格式化并输出变更统计
+wenqiao format paper.mid.md --stats
+
 # 从标准输入读取，仅正文模式
 cat paper.mid.md | wenqiao - --mode body -o paper.tex
 
@@ -221,6 +224,8 @@ wenqiao paper.mid.md --dump-east | jq .
   -o, --output PATH  输出路径（默认: 覆盖输入文件）
   --check            仅检查，未格式化时退出码 1
   --diff             显示统一差异
+  --no-rumdl         跳过 rumdl 格式化步骤
+  --stats            显示格式化统计信息
 ```
 
 </details>
@@ -381,6 +386,12 @@ except ConversionError as e:
 
 往返规范化：解析 → 重新渲染为 Markdown。幂等操作 — 对已格式化的文档再次
 格式化会返回相同文本。
+
+`format_text` 与 `wenqiao format` 共用数学规范化规则，包含：
+- Unicode 数学符号转 LaTeX（`≤`→`$\\leq$`；数学环境内转 `\\leq`）
+- 裸希腊字母转 LaTeX（`σ`→`$\\sigma$`；数学环境内转 `\\sigma`）
+- Unicode 上下标转标准写法（`m²`→`$m^2$`，`x₀`→`$x_0$`）
+- 对独立 `$$` 行间公式，自动保证前后与正文有空行分隔
 
 ```python
 from wenqiao import format_text
