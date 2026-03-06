@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from typing import cast
 
@@ -53,6 +54,11 @@ def _escape_url_for_latex(url: str) -> str:
         .replace("}", "\\}")
     )
 
+
+# Detect headings that already carry a numeric prefix like "1. 引言" or "2.1 相关工作".
+# When matched, starred commands (\section* etc.) suppress LaTeX auto-numbering.
+# (检测已含数字前缀的标题，使用星号命令避免 LaTeX 自动编号与文本编号重叠)
+_NUMBERED_HEADING_RE = re.compile(r"^\d+[\.\d]*[\.\s]")
 
 _HEADING_CMDS = {
     1: "section",
@@ -194,6 +200,11 @@ class LaTeXRenderer(LaTeXBlockMixin):
         bib_mode: str = str(meta.get("bibliography_mode", "auto") or "auto")
         bib_active: bool = bib_mode in ("auto", "standalone")
 
+        # extra preamble — emitted before title/author so \usepackage calls land in preamble
+        # (额外 preamble 先于 title/author 输出，确保 \usepackage 等命令在导言区生效)
+        if preamble := meta.get("preamble"):
+            lines.append(str(preamble))
+
         # bibstyle — 仅在参考文献激活时输出 (Only emit when bibliography is active)
         if bib_active:
             if bibstyle := meta.get("bibstyle"):
@@ -203,10 +214,6 @@ class LaTeXRenderer(LaTeXBlockMixin):
         for key in ("title", "author", "date"):
             if val := meta.get(key):
                 lines.append(f"\\{key}{{{val}}}")
-
-        # extra preamble
-        if preamble := meta.get("preamble"):
-            lines.append(str(preamble))
 
         lines.append("")
         lines.append("\\begin{document}")
@@ -245,6 +252,11 @@ class LaTeXRenderer(LaTeXBlockMixin):
         effective_level = h.level - self._heading_offset
         cmd = _HEADING_CMDS.get(effective_level, "subparagraph")
         text = self.render_children(node)
+        # If heading text already has a numeric prefix (e.g. "1. 引言"), use starred
+        # command to suppress LaTeX auto-numbering — avoids double numbering.
+        # (标题文本已含数字前缀时用星号命令，避免 LaTeX 自动编号与文本编号重叠)
+        if _NUMBERED_HEADING_RE.match(text):
+            cmd = f"{cmd}*"
         result = f"\\{cmd}{{{text}}}\n"
         if label := node.metadata.get("label"):
             result += f"\\label{{{label}}}\n"
