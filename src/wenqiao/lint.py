@@ -56,6 +56,174 @@ def fix_math_backslash(source: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# 规则 1.5: MATH-SYMBOLS — Unicode 数学符号转 LaTeX
+# Rule 1.5: MATH-SYMBOLS — convert Unicode math symbols to LaTeX
+# ---------------------------------------------------------------------------
+
+# Protect code spans/blocks so formatter won't touch literal code.
+# 保护代码块与行内代码，避免替换字面量内容。
+_FENCED_CODE_RE = re.compile(r"(?ms)^```[^\n]*\n.*?^```[ \t]*\n?")
+_INLINE_CODE_RE = re.compile(r"`[^`\n]+`")
+
+# Text context: wrap as inline math (文本环境：包成行内数学)
+_TEXT_SYMBOL_MAP: dict[str, str] = {
+    "≤": r"$\leq$",
+    "≥": r"$\geq$",
+    "≠": r"$\neq$",
+    "≈": r"$\approx$",
+    "±": r"$\pm$",
+    "×": r"$\times$",
+    "·": r"$\cdot$",
+    "÷": r"$\div$",
+    "∈": r"$\in$",
+    "∉": r"$\notin$",
+    "→": r"$\to$",
+    "←": r"$\leftarrow$",
+    "↔": r"$\leftrightarrow$",
+    "⇒": r"$\Rightarrow$",
+    "⇔": r"$\Leftrightarrow$",
+    "∞": r"$\infty$",
+    "∑": r"$\sum$",
+    "∏": r"$\prod$",
+}
+
+# Math context: plain commands (数学环境：直接命令)
+_MATH_SYMBOL_MAP: dict[str, str] = {
+    "≤": r" \leq ",
+    "≥": r" \geq ",
+    "≠": r" \neq ",
+    "≈": r" \approx ",
+    "±": r" \pm ",
+    "×": r" \times ",
+    "·": r" \cdot ",
+    "÷": r" \div ",
+    "∈": r" \in ",
+    "∉": r" \notin ",
+    "→": r" \to ",
+    "←": r" \leftarrow ",
+    "↔": r" \leftrightarrow ",
+    "⇒": r" \Rightarrow ",
+    "⇔": r" \Leftrightarrow ",
+    "∞": r"\infty",
+    "∑": r"\sum",
+    "∏": r"\prod",
+}
+
+
+def _replace_symbols(text: str, mapping: dict[str, str]) -> str:
+    """Apply symbol replacement mapping (应用符号替换映射)."""
+    out = text
+    for src, dst in mapping.items():
+        out = out.replace(src, dst)
+    return out
+
+
+def _protect_matches(
+    source: str, pattern: re.Pattern[str], *, prefix: str
+) -> tuple[str, list[str]]:
+    """Replace protected matches with placeholders (用占位符保护匹配片段)."""
+    slots: list[str] = []
+
+    def _repl(m: re.Match[str]) -> str:
+        idx = len(slots)
+        slots.append(m.group(0))
+        return f"\x00{prefix}{idx}\x00"
+
+    return pattern.sub(_repl, source), slots
+
+
+def _restore_matches(source: str, slots: list[str], *, prefix: str) -> str:
+    """Restore placeholders back to original segments (恢复占位符片段)."""
+    out = source
+    for idx, seg in enumerate(slots):
+        out = out.replace(f"\x00{prefix}{idx}\x00", seg)
+    return out
+
+
+def _fix_math_symbols_in_span(m: re.Match[str]) -> str:
+    """Convert symbols inside a single math span (替换单个数学片段内符号)."""
+    return _replace_symbols(m.group(0), _MATH_SYMBOL_MAP)
+
+
+def fix_math_symbols(source: str) -> str:
+    """Convert common Unicode math symbols to LaTeX.
+
+    将常见 Unicode 数学符号转换为 LaTeX：
+    - 数学环境内：`≤` → `\\leq`
+    - 普通文本中：`≤` → `$\\leq$`
+    - 代码块/行内代码中不替换
+    """
+    # 保护 fenced code (保护代码块)
+    protected, fenced_slots = _protect_matches(source, _FENCED_CODE_RE, prefix="FENCE")
+    # 保护 inline code (保护行内代码)
+    protected, inline_slots = _protect_matches(protected, _INLINE_CODE_RE, prefix="INLINE")
+
+    # 数学环境先替换为裸命令，再替换剩余文本为 $...$
+    # Replace in math first as plain commands, then text context as $...$
+    protected = _DISPLAY_MATH_RE.sub(_fix_math_symbols_in_span, protected)
+    protected = _INLINE_MATH_RE.sub(_fix_math_symbols_in_span, protected)
+    protected = _replace_symbols(protected, _TEXT_SYMBOL_MAP)
+
+    # 按逆序恢复：先 inline code 后 fenced code
+    protected = _restore_matches(protected, inline_slots, prefix="INLINE")
+    protected = _restore_matches(protected, fenced_slots, prefix="FENCE")
+    return protected
+
+
+# ---------------------------------------------------------------------------
+# 规则 1.6: DISPLAY-MATH-BLANKLINES — $$ 数学块与正文分隔空行
+# Rule 1.6: DISPLAY-MATH-BLANKLINES — ensure blank lines around $$ blocks
+# ---------------------------------------------------------------------------
+
+
+def _fix_display_math_blanklines_text(source: str) -> str:
+    """Ensure a blank line before opening $$ and after closing $$.
+
+    仅处理“独立一行且内容为 $$”的定界符。
+    """
+    has_trailing_newline = source.endswith("\n")
+    lines = source.splitlines()
+    out: list[str] = []
+    in_display = False
+
+    for i, line in enumerate(lines):
+        if line.strip() == "$$":
+            if not in_display:
+                # Opening $$: ensure previous line is blank.
+                if out and out[-1].strip() != "":
+                    out.append("")
+                out.append(line)
+                in_display = True
+            else:
+                # Closing $$: emit delimiter then ensure next line is blank.
+                out.append(line)
+                if i + 1 < len(lines) and lines[i + 1].strip() != "":
+                    out.append("")
+                in_display = False
+            continue
+
+        out.append(line)
+
+    result = "\n".join(out)
+    if has_trailing_newline:
+        result += "\n"
+    return result
+
+
+def fix_display_math_blanklines(source: str) -> str:
+    """Ensure blank lines around display math blocks delimited by $$ lines.
+
+    保证 $$ 数学块前后与正文用空行分隔；代码块和行内代码不处理。
+    """
+    protected, fenced_slots = _protect_matches(source, _FENCED_CODE_RE, prefix="FENCE")
+    protected, inline_slots = _protect_matches(protected, _INLINE_CODE_RE, prefix="INLINE")
+    protected = _fix_display_math_blanklines_text(protected)
+    protected = _restore_matches(protected, inline_slots, prefix="INLINE")
+    protected = _restore_matches(protected, fenced_slots, prefix="FENCE")
+    return protected
+
+
+# ---------------------------------------------------------------------------
 # 规则 2: MATH-SPACING — 中文紧贴数学公式两侧补空格
 # Rule 2: MATH-SPACING — insert space between CJK and math markers
 # ---------------------------------------------------------------------------
@@ -152,9 +320,11 @@ def fix_italic_spacing(source: str) -> str:
 #
 # 顺序说明 (Order rationale):
 #   1. fix_math_backslash   — 修数学内容，不改结构
-#   2. fix_math_spacing     — 数学标记周围补空格
-#   3. fix_bold_spacing     — ** 周围补空格（先于 italic，防止 ** 被误识别为 *）
-#   4. fix_italic_spacing   — * 周围补空格（此时 ** 已有空格，lookahead 安全）
+#   2. fix_math_symbols     — Unicode 数学符号转 LaTeX
+#   3. fix_display_math_blanklines — $$ 数学块前后补空行
+#   4. fix_math_spacing     — 数学标记周围补空格
+#   5. fix_bold_spacing     — ** 周围补空格（先于 italic，防止 ** 被误识别为 *）
+#   6. fix_italic_spacing   — * 周围补空格（此时 ** 已有空格，lookahead 安全）
 
 
 def fix_common_errors(source: str, *, fix_emphasis_spacing: bool = True) -> str:
@@ -171,6 +341,8 @@ def fix_common_errors(source: str, *, fix_emphasis_spacing: bool = True) -> str:
         Fixed source text (修正后的文本)
     """
     source = fix_math_backslash(source)
+    source = fix_math_symbols(source)
+    source = fix_display_math_blanklines(source)
     source = fix_math_spacing(source)
     if fix_emphasis_spacing:
         source = fix_bold_spacing(source)
