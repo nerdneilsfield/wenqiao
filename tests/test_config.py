@@ -11,7 +11,7 @@ def test_config_defaults() -> None:
     assert cfg.target == "latex"
     assert cfg.mode == "full"
     assert cfg.documentclass == "article"
-    assert cfg.classoptions == ["12pt", "a4paper"]
+    assert cfg.classoptions == ["10pt", "a4paper"]
     assert "amsmath" in cfg.packages
     assert cfg.bibstyle == "plain"
     assert cfg.code_style == "lstlisting"

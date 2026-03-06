@@ -334,6 +334,21 @@ class TestFigure:
         assert "AI Generation Info" in result
         assert "dall-e-3" in result
 
+    def test_figure_caption_supports_ref_and_cite(self) -> None:
+        """Figure caption supports ref/cite formatting (图注支持 ref/cite)."""
+        target = Figure(src="t.png", alt="T")
+        target.metadata["caption"] = "Target"
+        target.metadata["label"] = "fig:target"
+
+        fig = Figure(src="a.png", alt="A")
+        fig.metadata["caption"] = "See [target](ref:fig:target) and [Smith](cite:smith2024)."
+        fig.metadata["label"] = "fig:main"
+
+        result = render(doc(target, fig), bib={"smith2024": "Smith, 2024"})
+        assert '<a href="#fig:target">target</a>' in result
+        assert "Smith[^smith2024]" in result
+        assert "[^smith2024]: Smith, 2024" in result
+
 
 # ── Phase 3 Task 4: Nested lists (嵌套列表) ────────────────────────
 
@@ -505,6 +520,23 @@ class TestTable:
         result = render(doc(f, t))
         assert "图 1" in result
         assert "表 1" in result
+
+    def test_table_caption_supports_ref_and_cite(self) -> None:
+        """Table caption supports ref/cite formatting (表注支持 ref/cite)."""
+        f = Figure(src="x.png", alt="X")
+        f.metadata["caption"] = "Fig"
+        f.metadata["label"] = "fig:x"
+        t = Table(
+            headers=_cells("A"),
+            alignments=["left"],
+            rows=_rows(["1"]),
+        )
+        t.metadata["label"] = "tab:a"
+        t.metadata["caption"] = "See [图 x](ref:fig:x) and [Smith](cite:smith2024)."
+        result = render(doc(f, t), bib={"smith2024": "Smith, 2024"})
+        assert '<a href="#fig:x">图 x</a>' in result
+        assert "Smith[^smith2024]" in result
+        assert "[^smith2024]: Smith, 2024" in result
 
 
 class TestTableRichCells:
@@ -710,6 +742,49 @@ class TestRawBlock:
         rb = RawBlock(content=content)
         result = render(doc(rb))
         assert content in result
+
+    def test_latex_raw_table_converted_to_html_table(self) -> None:
+        """LaTeX raw table converts to HTML table block (LaTeX 表格可转换)."""
+        latex_table = r"""
+\begin{table}[htbp]
+\centering
+\caption{ICP 优化求解器综合对比}
+\label{tab:opt-solver-compare}
+\begin{tabular}{lll}
+\hline
+\textbf{方法} & \textbf{类别} & \textbf{SLAM 就绪} \\
+\hline
+Gauss-Newton & 一阶 NLS & 是 \\
+TEASER++ & TLS + SDP + 图论 & 有限 \\
+\hline
+\end{tabular}
+\end{table}
+""".strip()
+        rb = RawBlock(content=latex_table, kind="latex")
+        result = render(doc(rb))
+        assert '<figure id="tab:opt-solver-compare">' in result
+        assert "<table>" in result
+        assert "<thead>" in result
+        assert "<tbody>" in result
+        assert "<strong>方法</strong>" in result
+        assert "<td>Gauss-Newton</td>" in result
+        assert "<figcaption><strong>表 1</strong>: ICP 优化求解器综合对比</figcaption>" in result
+        assert "<details>" not in result
+
+    def test_latex_raw_table_flattened_rows_still_converted(self) -> None:
+        """Flattened begin/raw table content still converts (压平行内容仍可转换)."""
+        latex_table_flat = (
+            r"\begin{table}[htbp]\centering\caption{综合对比}\label{tab:flat}"
+            r"\begin{tabular}{lll}\hline\textbf{方法} & \textbf{类别} & \textbf{备注} "
+            r"\\hlineA & B & C \D & E & F \\hline\end{tabular}\end{table}"
+        )
+        rb = RawBlock(content=latex_table_flat, kind="latex")
+        result = render(doc(rb))
+        assert '<figure id="tab:flat">' in result
+        assert "<table>" in result
+        assert "<td>D</td>" in result
+        assert "<td>F</td>" in result
+        assert "<details>" not in result
 
 
 class TestFrontMatter:

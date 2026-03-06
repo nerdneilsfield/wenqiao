@@ -128,3 +128,68 @@ def test_format_no_rumdl_flag(tmp_path: Path) -> None:
     src.write_text("# Hello\n\nWorld.\n")
     result = CliRunner().invoke(main, ["format", str(src), "--no-rumdl"])
     assert result.exit_code == 0
+
+
+def test_format_fixes_unicode_math_symbols_in_text(tmp_path: Path) -> None:
+    """format converts Unicode math symbols to LaTeX in plain text."""
+    src = tmp_path / "doc.mid.md"
+    src.write_text("# 标题\n\na≤b，x≥y，u≠v。\n", encoding="utf-8")
+    result = CliRunner().invoke(main, ["format", str(src), "--no-rumdl"])
+    assert result.exit_code == 0
+    content = src.read_text(encoding="utf-8")
+    assert r"a$\leq$b" in content
+    assert r"x$\geq$y" in content
+    assert r"u$\neq$v" in content
+
+
+def test_format_fixes_unicode_math_symbols_inside_math(tmp_path: Path) -> None:
+    """format keeps symbols in math spans as bare LaTeX commands."""
+    src = tmp_path / "doc.mid.md"
+    src.write_text("# 标题\n\n关系 $a≤b$ 与 $x→y$。\n", encoding="utf-8")
+    result = CliRunner().invoke(main, ["format", str(src), "--no-rumdl"])
+    assert result.exit_code == 0
+    content = src.read_text(encoding="utf-8")
+    assert r"$a \leq b$" in content
+    assert r"$x \to y$" in content
+    assert "≤" not in content
+    assert "→" not in content
+
+
+def test_format_does_not_touch_code_blocks_or_inline_code(tmp_path: Path) -> None:
+    """format does not rewrite symbols inside code literals."""
+    src = tmp_path / "doc.mid.md"
+    src.write_text(
+        "# 标题\n\n`a≤b`.\n\n```python\nexpr = 'x→y'\n```\n",
+        encoding="utf-8",
+    )
+    result = CliRunner().invoke(main, ["format", str(src), "--no-rumdl"])
+    assert result.exit_code == 0
+    content = src.read_text(encoding="utf-8")
+    assert "`a≤b`" in content
+    assert "expr = 'x→y'" in content
+
+
+def test_format_inserts_blank_lines_around_display_math(tmp_path: Path) -> None:
+    """Display math block delimited by $$ is separated from surrounding text."""
+    src = tmp_path / "doc.mid.md"
+    src.write_text(
+        "# 标题\n\n前文\n$$\na=b\n$$\n后文\n",
+        encoding="utf-8",
+    )
+    result = CliRunner().invoke(main, ["format", str(src), "--no-rumdl"])
+    assert result.exit_code == 0
+    content = src.read_text(encoding="utf-8")
+    assert "前文\n\n$$\na=b\n$$\n\n后文" in content
+
+
+def test_format_keeps_display_math_blankline_rule_outside_code_fence(tmp_path: Path) -> None:
+    """$$ inside fenced code block is not changed by display-math blankline fixer."""
+    src = tmp_path / "doc.mid.md"
+    src.write_text(
+        "# 标题\n\n```tex\nx\n$$\ny\n$$\nz\n```\n",
+        encoding="utf-8",
+    )
+    result = CliRunner().invoke(main, ["format", str(src), "--no-rumdl"])
+    assert result.exit_code == 0
+    content = src.read_text(encoding="utf-8")
+    assert "x\n$$\ny\n$$\nz" in content
