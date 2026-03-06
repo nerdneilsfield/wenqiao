@@ -236,6 +236,29 @@ class LaTeXRenderer(LaTeXBlockMixin):
             return f"\\begin{{equation}}\n{mb.content}\n\\label{{{label}}}\n\\end{{equation}}\n"
         return f"\\[\n{mb.content}\n\\]\n"
 
+    # Normalize common markdown language names to listings-compatible identifiers.
+    # (将常见 markdown 语言名映射到 listings 包可识别的语言标识符)
+    _LISTINGS_LANG_MAP: dict[str, str] = {
+        "cpp": "C++",
+        "c++": "C++",
+        "cxx": "C++",
+        "c#": "C",
+        "csharp": "C",
+        "js": "Java",
+        "javascript": "Java",
+        "ts": "Java",
+        "typescript": "Java",
+        "sh": "bash",
+        "shell": "bash",
+        "zsh": "bash",
+        "py": "Python",
+        "rb": "Ruby",
+        "rs": "C",
+        "golang": "Go",
+        "yml": "Python",
+        "yaml": "Python",
+    }
+
     def render_code_block(self, node: Node) -> str:
         """渲染代码块 (Render code block: lstlisting or minted)."""
         cb = cast(CodeBlock, node)
@@ -246,8 +269,10 @@ class LaTeXRenderer(LaTeXBlockMixin):
             return f"\\begin{{verbatim}}\n{cb.content}\n\\end{{verbatim}}\n"
         # Default: lstlisting (默认：lstlisting)
         if cb.language:
+            # Normalize language identifier for listings compatibility (规范化语言标识符)
+            lang = self._LISTINGS_LANG_MAP.get(cb.language.lower(), cb.language)
             return (
-                f"\\begin{{lstlisting}}[language={cb.language}]\n"
+                f"\\begin{{lstlisting}}[language={lang}]\n"
                 f"{cb.content}\n"
                 f"\\end{{lstlisting}}\n"
             )
