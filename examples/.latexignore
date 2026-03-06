@@ -1,0 +1,25 @@
+# LaTeX intermediate/output artifacts (for examples/)
+# Build directory from latexmkrc
+build/
+
+# Common LaTeX/BibTeX/Biber auxiliary files
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.idx
+*.ilg
+*.ind
+*.lof
+*.log
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+*.xdv
+
+# Optional generated outputs
+*.pdf
