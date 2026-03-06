@@ -138,49 +138,177 @@ class LaTeXBlockMixin:
             return self._render_figure_env(img.src, meta)
         return f"\\includegraphics{{{img.src}}}"
 
+    # Estimated text width in "average characters" (估算文本宽度，以平均字符数表示).
+    # 10pt a4paper with 2cm margins ≈ 170mm ≈ 48em; at ~0.5em/char → ~96 chars.
+    # Use 80 as conservative baseline (保守取 80 作为基准文本宽度字符数).
+    _TABLE_TEXT_WIDTH_CHARS: int = 80
+    # Minimum allowed scale factor — never go below this (最小允许缩放因子).
+    _TABLE_MIN_SCALE: float = 0.55
+    # Cell content length above which \makecell line-breaks are inserted.
+    # (单元格内容超过此长度时插入 \makecell 换行)
+    _TABLE_CELL_WRAP_CHARS: int = 48
+
+    @staticmethod
+    def _display_width(text: str) -> int:
+        """Count display width treating CJK characters as width 2.
+
+        CJK fullwidth characters occupy ~2× the horizontal space of ASCII chars
+        when typeset. This correction prevents under-estimating table width for
+        Chinese content. (CJK 字符排版宽度约为 ASCII 的 2 倍，需修正以避免低估。)
+
+        Args:
+            text: Rendered cell string (已渲染字符串)
+
+        Returns:
+            Weighted character count (加权字符数)
+        """
+        width = 0
+        for ch in text:
+            cp = ord(ch)
+            # CJK Unified Ideographs, CJK Extension, Kana, fullwidth ASCII,
+            # CJK Compatibility, etc. (CJK 统一汉字、片假名、全角字符等)
+            if (
+                0x1100 <= cp <= 0x115F  # Hangul Jamo
+                or 0x2E80 <= cp <= 0x2EFF  # CJK Radicals
+                or 0x2F00 <= cp <= 0x2FDF  # Kangxi Radicals
+                or 0x3000 <= cp <= 0x303F  # CJK Symbols and Punctuation
+                or 0x3040 <= cp <= 0x309F  # Hiragana
+                or 0x30A0 <= cp <= 0x30FF  # Katakana
+                or 0x3400 <= cp <= 0x9FFF  # CJK Unified Ideographs (main)
+                or 0xAC00 <= cp <= 0xD7AF  # Hangul Syllables
+                or 0xF900 <= cp <= 0xFAFF  # CJK Compatibility
+                or 0xFF01 <= cp <= 0xFF60  # Fullwidth ASCII
+                or 0x20000 <= cp <= 0x2A6DF  # CJK Extension B
+            ):
+                width += 2
+            else:
+                width += 1
+        return width
+
+    def _estimate_table_width(self, tbl: Table) -> int:
+        """Estimate table width by summing max display width per column.
+
+        估算表格宽度：各列最大显示宽度（CJK 字符计 2）之和。
+        CJK chars are weighted 2× to reflect actual typeset width.
+        (CJK 字符权重为 2，以反映实际排版宽度。)
+
+        Args:
+            tbl: Table node (表格节点)
+
+        Returns:
+            Sum of per-column max display widths (各列最大显示宽度之和)
+        """
+        n_cols = len(tbl.headers)
+        total = 0
+        for i in range(n_cols):
+            col_max = self._display_width(self._render_nodes(tbl.headers[i]))
+            for row in tbl.rows:
+                if i < len(row):
+                    col_max = max(col_max, self._display_width(self._render_nodes(row[i])))
+            total += col_max
+        return total
+
     def render_table(self, node: Node) -> str:
-        """Render Table node as LaTeX table environment (渲染 Table 节点)."""
+        """Render Table node as LaTeX table environment (渲染 Table 节点).
+
+        Wide tables have an explicit scale factor computed from the estimated
+        column widths and wrapped in \\scalebox{factor}{...}.
+        The factor is visible in the .tex output for manual tuning.
+        (宽表格计算明确的缩放因子并套 \\scalebox{factor}，因子写入 .tex 便于手动微调。)
+        """
         tbl = cast(Table, node)
         meta = node.metadata
         caption = str(meta.get("caption", ""))
         label = str(meta.get("label", ""))
         placement = str(meta.get("placement", "htbp"))
 
-        # Column alignment (列对齐)
+        # Column alignment spec (列对齐格式)
         align_map = {"left": "l", "right": "r", "center": "c"}
         col_spec = "".join(align_map.get(a, "l") for a in tbl.alignments)
         if not col_spec:
             col_spec = "l" * len(tbl.headers)
 
+        # Build the tabular body (构建 tabular 主体)
+        tabular_lines: list[str] = [f"\\begin{{tabular}}{{{col_spec}}}"]
+        tabular_lines.append("\\hline")
+
+        # Header row — wrap long header cells (表头行，超长内容换行)
+        header_row = " & ".join(
+            self._wrap_cell(self._render_nodes(h)) for h in tbl.headers
+        )
+        tabular_lines.append(f"{header_row} \\\\")
+        tabular_lines.append("\\hline")
+
+        # Data rows — wrap long data cells (数据行，超长内容换行)
+        for row in tbl.rows:
+            data_row = " & ".join(
+                self._wrap_cell(self._render_nodes(cell)) for cell in row
+            )
+            tabular_lines.append(f"{data_row} \\\\")
+
+        tabular_lines.append("\\hline")
+        tabular_lines.append("\\end{tabular}")
+        tabular_body = "\n".join(tabular_lines)
+
+        # Auto-scale wide tables by computing an explicit scale factor.
+        # scale = text_width_chars / estimated_width, clamped to [min, 1.0].
+        # Using \scalebox so the factor is visible in the .tex output and can
+        # be manually adjusted if needed. (通过估算宽度计算缩放因子，写入 .tex 便于手动微调。)
+        estimated_width = self._estimate_table_width(tbl)
+        if estimated_width > self._TABLE_TEXT_WIDTH_CHARS:
+            raw_scale = self._TABLE_TEXT_WIDTH_CHARS / estimated_width
+            scale = round(max(self._TABLE_MIN_SCALE, min(1.0, raw_scale)), 2)
+            tabular_body = f"\\scalebox{{{scale}}}{{\n{tabular_body}\n}}"
+
         lines = [f"\\begin{{table}}[{placement}]"]
         lines.append("\\centering")
-
         if caption:
             lines.append(f"\\caption{{{caption}}}")
         if label:
             lines.append(f"\\label{{{label}}}")
-
-        lines.append(f"\\begin{{tabular}}{{{col_spec}}}")
-        lines.append("\\hline")
-
-        # Header row (表头行) — render inline nodes in each cell
-        header_row = " & ".join(self._render_nodes(h) for h in tbl.headers)
-        lines.append(f"{header_row} \\\\")
-        lines.append("\\hline")
-
-        # Data rows (数据行) — render inline nodes in each cell
-        for row in tbl.rows:
-            data_row = " & ".join(self._render_nodes(cell) for cell in row)
-            lines.append(f"{data_row} \\\\")
-
-        lines.append("\\hline")
-        lines.append("\\end{tabular}")
+        lines.append(tabular_body)
         lines.append("\\end{table}")
         return "\n".join(lines) + "\n"
 
     def _render_nodes(self, nodes: list[Node]) -> str:
         """Render a list of inline nodes (渲染行内节点列表)."""
         return "".join(self.render(n) for n in nodes)
+
+    def _wrap_cell(self, text: str) -> str:
+        """Wrap long table cell content with \\makecell line breaks.
+
+        When cell text exceeds _TABLE_CELL_WRAP_CHARS, split at word boundaries
+        and wrap the result in \\makecell[t]{line1\\\\line2\\\\...}.
+        Only splits at spaces to avoid cutting LaTeX commands.
+        (超过阈值时在词边界处拆分，用 \\makecell[t] 包裹，避免切断 LaTeX 命令。)
+
+        Args:
+            text: Rendered cell content (已渲染的单元格内容)
+
+        Returns:
+            Original text, or \\makecell-wrapped multi-line version (原文或多行版本)
+        """
+        if self._display_width(text) <= self._TABLE_CELL_WRAP_CHARS:
+            return text
+        words = text.split(" ")
+        lines: list[str] = []
+        current: list[str] = []
+        current_len = 0
+        for word in words:
+            # +1 for the space separator between words (词间空格)
+            new_len = current_len + self._display_width(word) + (1 if current else 0)
+            if new_len > self._TABLE_CELL_WRAP_CHARS and current:
+                lines.append(" ".join(current))
+                current = [word]
+                current_len = len(word)
+            else:
+                current.append(word)
+                current_len = self._display_width(word)
+        if current:
+            lines.append(" ".join(current))
+        if len(lines) <= 1:
+            return text  # single word longer than threshold — cannot split (无法拆分)
+        return "\\makecell[t]{" + "\\\\\n".join(lines) + "}"
 
     def render_environment(self, node: Node) -> str:
         r"""Render LaTeX environment with optional options and args.
