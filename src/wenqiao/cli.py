@@ -15,6 +15,7 @@ import click
 from wenqiao import __version__
 from wenqiao.diagnostic import DiagCollector
 from wenqiao.format_cmd import format_cmd
+from wenqiao.generate_cmd import generate_cmd
 from wenqiao.pipeline import (
     build_config,
     create_renderer,
@@ -302,6 +303,7 @@ def convert_cmd(
 # Register subcommands (注册子命令)
 cli.add_command(validate_cmd)
 cli.add_command(format_cmd)
+cli.add_command(generate_cmd)
 
 # Backward-compat alias (向后兼容别名)
 main = cli
