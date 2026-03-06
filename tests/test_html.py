@@ -33,9 +33,9 @@ from wenqiao.nodes import (
 )
 
 
-def doc(*children) -> Document:
+def doc(*children, metadata: dict[str, object] | None = None) -> Document:
     """Convenience: build a Document from nodes (构造含节点的文档)."""
-    return Document(children=list(children))
+    return Document(children=list(children), metadata=dict(metadata or {}))
 
 
 def render(node, **kwargs) -> str:
@@ -59,6 +59,20 @@ class TestHtmlDocumentStructure:
         result = render(doc(Paragraph(children=[Text(content="Hi")])), mode="full")
         assert "mathjax" in result.lower()
 
+    def test_full_mode_has_katex_assets(self) -> None:
+        """Full mode includes KaTeX CSS/JS assets (全文模式包含 KaTeX 资源)."""
+        result = render(doc(Paragraph(children=[Text(content="Hi")])), mode="full")
+        assert "katex.min.css" in result
+        assert "katex.min.js" in result
+        assert "auto-render.min.js" in result
+
+    def test_full_mode_has_katex_mathjax_fallback_script(self) -> None:
+        """Math renderer script prefers KaTeX and falls back to MathJax."""
+        result = render(doc(Paragraph(children=[Text(content="Hi")])), mode="full")
+        assert "renderMathInElement" in result
+        assert "window.MathJax.typesetPromise" in result
+        assert 'data-math-renderer' in result
+
     def test_body_mode_no_doctype(self) -> None:
         """Body mode has no DOCTYPE (body 模式无 DOCTYPE)."""
         result = render(doc(Paragraph(children=[Text(content="Hi")])), mode="body")
@@ -69,6 +83,18 @@ class TestHtmlDocumentStructure:
         result = render(doc(Paragraph(children=[Text(content="Hi")])), mode="fragment")
         assert "<!DOCTYPE" not in result
         assert "<html" not in result
+
+    def test_full_mode_shows_title_author_in_body(self) -> None:
+        """Full mode renders visible title/author block (全文模式显示标题作者)."""
+        result = render(
+            doc(
+                Paragraph(children=[Text(content="Hi")]),
+                metadata={"title": "My Paper", "author": "Alice"},
+            ),
+            mode="full",
+        )
+        assert '<h1 class="doc-title">My Paper</h1>' in result
+        assert '<p class="doc-author">Alice</p>' in result
 
 
 # ── Block nodes ───────────────────────────────────────────────────────────────
@@ -94,6 +120,14 @@ class TestHtmlHeading:
             h = Heading(level=level, children=[Text(content="X")])
             result = render(doc(h))
             assert f"<h{level}" in result
+
+    def test_heading_without_label_gets_auto_id_and_toc(self) -> None:
+        """Unlabeled heading gets auto id and appears in TOC."""
+        h = Heading(level=2, children=[Text(content="Intro Section")])
+        result = render(doc(h), mode="full")
+        assert '<h2 id="intro-section">' in result
+        assert '<details class="toc-panel"' in result
+        assert 'href="#intro-section"' in result
 
 
 class TestHtmlParagraph:
@@ -197,6 +231,49 @@ class TestHtmlRawBlock:
         result = render(doc(rb))
         assert "<details>" in result
         assert "\\newcommand" in result
+
+    def test_latex_raw_table_converted_to_html_table(self) -> None:
+        """LaTeX table raw block is converted to HTML table when structure is parseable."""
+        latex_table = r"""
+\begin{table}[htbp]
+\centering
+\caption{ICP 优化求解器综合对比}
+\label{tab:opt-solver-compare}
+\begin{tabular}{lll}
+\hline
+\textbf{方法} & \textbf{类别} & \textbf{SLAM 就绪} \\
+\hline
+Gauss-Newton & 一阶 NLS & 是 \\
+TEASER++ & TLS + SDP + 图论 & 有限 \\
+\hline
+\end{tabular}
+\end{table}
+""".strip()
+        rb = RawBlock(content=latex_table, kind="latex")
+        result = render(doc(rb), mode="fragment")
+        assert '<div class="table-wrap" id="tab:opt-solver-compare">' in result
+        assert "<table>" in result
+        assert "<thead>" in result
+        assert "<tbody>" in result
+        assert "<strong>方法</strong>" in result
+        assert "<td>Gauss-Newton</td>" in result
+        assert "ICP 优化求解器综合对比" in result
+        assert "<details>" not in result
+
+    def test_latex_raw_table_with_flattened_rows_still_converts(self) -> None:
+        """Flattened raw-table content from begin/raw still converts to HTML table."""
+        latex_table_flat = (
+            r"\begin{table}[htbp]\centering\caption{综合对比}\label{tab:flat}"
+            r"\begin{tabular}{lll}\hline\textbf{方法} & \textbf{类别} & \textbf{备注} "
+            r"\\hlineA & B & C \D & E & F \\hline\end{tabular}\end{table}"
+        )
+        rb = RawBlock(content=latex_table_flat, kind="latex")
+        result = render(doc(rb), mode="fragment")
+        assert '<div class="table-wrap" id="tab:flat">' in result
+        assert "<table>" in result
+        assert "<td>D</td>" in result
+        assert "<td>F</td>" in result
+        assert "<details>" not in result
 
 
 # ── Inline nodes ──────────────────────────────────────────────────────────────
@@ -310,6 +387,24 @@ class TestHtmlFigure:
         fig = Figure(src="a.png", alt="A", metadata={"caption": "Cap"})
         result = HTMLRenderer(locale="zh").render(doc(fig))
         assert "图 1" in result
+
+    def test_figure_caption_supports_ref_and_cite(self) -> None:
+        """Figure caption supports ref/cite syntax (图注支持 ref/cite)."""
+        target = Figure(src="t.png", alt="T", metadata={"caption": "Target", "label": "fig:target"})
+        fig = Figure(
+            src="a.png",
+            alt="A",
+            metadata={
+                "caption": "See [target](ref:fig:target) and [Smith](cite:smith2024).",
+                "label": "fig:main",
+            },
+        )
+        result = HTMLRenderer(mode="body", bib={"smith2024": "Smith, 2024"}).render(
+            doc(target, fig)
+        )
+        assert 'href="#fig:target"' in result
+        assert 'class="cite"' in result
+        assert 'id="cite-smith2024"' in result
 
 
 class TestHtmlLangAttribute:
@@ -434,6 +529,27 @@ class TestHtmlFigureWidthXss:
         result = render(doc(fig), mode="fragment")
         assert 'style="max-width:80%"' in result
 
+    def test_full_mode_uses_doc_image_max_width(self) -> None:
+        """Doc metadata controls global figure max width (文档元数据控制全局图片宽度)."""
+        fig = Figure(src="a.png", alt="A", metadata={"caption": "Cap"})
+        result = render(doc(fig, metadata={"html_image_max_width": "86%"}), mode="full")
+        assert "--image-max-width: 86%;" in result
+
+
+class TestHtmlNavigationWidgets:
+    """TOC panel and back-to-top button (目录和回顶按钮)."""
+
+    def test_full_mode_has_back_to_top_button(self) -> None:
+        result = render(
+            doc(
+                Heading(level=1, children=[Text(content="Intro")]),
+                Paragraph(children=[Text(content="Body")]),
+            ),
+            mode="full",
+        )
+        assert 'class="back-to-top"' in result
+        assert 'href="#top"' in result
+
 
 # ── Fix B: Footnote ref sequential numbering ─────────────────────────────────
 
@@ -470,7 +586,7 @@ class TestHtmlLinkSchemeBypass:
                 Link(url=" javascript:alert(1)", children=[Text(content="click")]),
             ]
         )
-        result = render(doc(p))
+        result = render(doc(p), mode="fragment")
         assert "javascript:" not in result
         assert "click" in result
         assert "href" not in result
@@ -511,7 +627,7 @@ class TestHtmlLinkControlCharBypass:
                 ),
             ]
         )
-        result = render(doc(p))
+        result = render(doc(p), mode="fragment")
         assert "click" in result
         assert "href" not in result
 
@@ -620,6 +736,6 @@ class TestHtmlLinkDataSvg:
                 ),
             ]
         )
-        result = render(doc(p))
+        result = render(doc(p), mode="fragment")
         assert "evil" in result
         assert "href" not in result

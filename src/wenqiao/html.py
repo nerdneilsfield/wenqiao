@@ -28,10 +28,12 @@ from wenqiao.nodes import (
     MathBlock,
     MathInline,
     Node,
+    Paragraph,
     RawBlock,
     Table,
     Text,
 )
+from wenqiao.parser import parse
 from wenqiao.url_check import is_unsafe_url
 
 
@@ -42,32 +44,295 @@ def _esc(text: str) -> str:
 
 # Safe width pattern: digits + CSS units only (安全宽度正则：仅数字 + CSS 单位)
 _SAFE_WIDTH_RE = re.compile(r"^\d+(\.\d+)?(px|em|rem|%|cm|mm|pt|vw)$")
+_SLUG_INVALID_RE = re.compile(r"[^\w\u4e00-\u9fff-]+", re.UNICODE)
+_LATEX_TABULAR_RE = re.compile(
+    r"\\begin\{tabular\}\{([^}]*)\}(.*?)\\end\{tabular\}",
+    re.DOTALL,
+)
 
 
-# MathJax v3 CDN (MathJax v3 CDN 链接)
+# KaTeX + MathJax CDNs (KaTeX + MathJax CDN 链接)
+_KATEX_CSS_CDN = "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+_KATEX_JS_CDN = "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+_KATEX_AUTORENDER_CDN = (
+    "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+)
 _MATHJAX_CDN = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+_DEFAULT_IMAGE_MAX_WIDTH = "92%"
+_TOC_INTERACTION_JS = """\
+(() => {
+  const toc = document.querySelector(".toc-panel");
+  if (!toc) return;
+  const links = toc.querySelectorAll(".toc-nav a");
+  links.forEach((a) => {
+    a.addEventListener("click", () => {
+      if (window.matchMedia("(max-width: 1180px)").matches) toc.removeAttribute("open");
+    });
+  });
+  document.addEventListener("click", (ev) => {
+    if (!toc.hasAttribute("open")) return;
+    if (window.matchMedia("(max-width: 1180px)").matches && !toc.contains(ev.target)) {
+      toc.removeAttribute("open");
+    }
+  });
+})();
+"""
+_MATH_RENDER_JS = r"""\
+(() => {
+  const log = (...args) => console.log("[wenqiao-math]", ...args);
+  const done = (name) => document.documentElement.setAttribute("data-math-renderer", name);
+  const katexDelimiters = [
+    { left: "$$", right: "$$", display: true },
+    { left: "\\[", right: "\\]", display: true },
+    { left: "$", right: "$", display: false },
+    { left: "\\(", right: "\\)", display: false },
+  ];
 
-# Minimal academic CSS (最小学术 CSS 样式)
-_CSS = """\
-body { max-width: 800px; margin: 2em auto; font-family: serif; line-height: 1.7;
-       padding: 0 1em; color: #222; }
-h1, h2, h3, h4 { font-weight: bold; margin-top: 1.5em; }
-figure { text-align: center; margin: 1.5em auto; }
-figcaption { font-style: italic; margin-top: 0.4em; }
-table { border-collapse: collapse; margin: 1em auto; }
-th, td { border: 1px solid #bbb; padding: 0.4em 0.8em; }
-th { background: #f4f4f4; }
-.table-wrap { text-align: center; margin: 1.5em 0; }
-.table-caption { font-style: italic; margin-bottom: 0.4em; }
-pre { background: #f6f6f6; padding: 1em; overflow-x: auto; border-radius: 4px; }
-code { font-family: monospace; font-size: 0.92em; }
-blockquote { border-left: 4px solid #ccc; margin-left: 0; padding-left: 1em;
-             color: #555; }
-.footnotes { border-top: 1px solid #ccc; margin-top: 3em; font-size: 0.9em; }
-.bibliography { margin-top: 2em; }
-details { background: #fafafa; border: 1px solid #ddd; border-radius: 4px;
-          padding: 0.5em 1em; margin: 1em 0; }
-summary { cursor: pointer; font-weight: bold; }
+  let attempts = 0;
+  const maxAttempts = 30;
+  const stepMs = 120;
+  log("init", { maxAttempts, stepMs });
+
+  const renderWithKaTeX = () => {
+    if (typeof window.renderMathInElement !== "function") return false;
+    try {
+      window.renderMathInElement(document.body, {
+        delimiters: katexDelimiters,
+        throwOnError: false,
+        strict: "ignore",
+      });
+      log("KaTeX render success");
+      done("katex");
+      return true;
+    } catch (err) {
+      log("KaTeX render failed, will fallback", err);
+      return false;
+    }
+  };
+
+  const renderWithMathJax = () => {
+    if (!window.MathJax || typeof window.MathJax.typesetPromise !== "function") return false;
+    log("fallback to MathJax");
+    window.MathJax.typesetPromise()
+      .then(() => {
+        log("MathJax render success");
+        done("mathjax");
+      })
+      .catch((err) => {
+        log("MathJax render failed", err);
+        done("mathjax-error");
+      });
+    return true;
+  };
+
+  const tick = () => {
+    if (renderWithKaTeX()) return;
+    if (renderWithMathJax()) return;
+    attempts += 1;
+    if (attempts < maxAttempts) {
+      window.setTimeout(tick, stepMs);
+    } else {
+      log("no math renderer became available");
+      done("none");
+    }
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", tick, { once: true });
+  } else {
+    tick();
+  }
+})();
+"""
+
+
+def _normalize_css_width(value: object, *, fallback: str = _DEFAULT_IMAGE_MAX_WIDTH) -> str:
+    """Normalize CSS width and clamp percentage to <=100 (规范化宽度并限制百分比 <=100)."""
+    text = str(value).strip()
+    if not text:
+        return fallback
+    if not _SAFE_WIDTH_RE.match(text):
+        return fallback
+    if text.endswith("%"):
+        try:
+            pct = float(text[:-1])
+        except ValueError:
+            return fallback
+        pct = max(0.0, min(100.0, pct))
+        if pct.is_integer():
+            return f"{int(pct)}%"
+        return f"{pct:g}%"
+    return text
+
+
+def _slugify_heading(text: str) -> str:
+    """Build stable heading slug for TOC and anchor ids (为目录和锚点生成稳定 slug)."""
+    s = re.sub(r"\s+", "-", text.strip().lower())
+    s = _SLUG_INVALID_RE.sub("", s)
+    return s.strip("-_")
+
+
+def _build_css(image_max_width: str) -> str:
+    """Build HTML stylesheet with configurable image max-width."""
+    return f"""\
+:root {{
+  --content-max-width: 920px;
+  --image-max-width: {image_max_width};
+  --toc-width: 260px;
+}}
+html {{ scroll-behavior: smooth; }}
+body {{
+  margin: 0;
+  color: #222;
+  font-family: serif;
+  line-height: 1.7;
+  padding: 2em 1.2em;
+  overflow-x: hidden;
+}}
+.content-wrap {{
+  width: min(var(--content-max-width), calc(100vw - 2.4rem));
+  margin-left: auto;
+  margin-right: auto;
+}}
+.doc-header {{ margin-bottom: 1.2em; text-align: center; }}
+.doc-title {{ margin: 0; }}
+.doc-author {{ margin: 0.25em 0 0; color: #555; }}
+.doc-date {{ margin: 0.25em 0 0; color: #666; font-size: 0.95em; }}
+.doc-abstract {{ margin: 0.75em 0 0; }}
+h1, h2, h3, h4 {{ font-weight: bold; margin-top: 1.5em; }}
+img {{ max-width: 100%; height: auto; }}
+figure {{ text-align: center; margin: 1.5em auto; }}
+figure img {{ max-width: min(100%, var(--image-max-width)); }}
+figcaption {{ font-style: italic; margin-top: 0.4em; }}
+table {{ border-collapse: collapse; margin: 1em auto; }}
+th, td {{ border: 1px solid #bbb; padding: 0.4em 0.8em; }}
+th {{ background: #f4f4f4; }}
+.table-wrap {{
+  text-align: center;
+  margin: 1.5em 0;
+  overflow-x: auto;
+  max-width: 100%;
+}}
+.table-wrap table {{
+  width: max-content;
+  min-width: 100%;
+}}
+.table-caption {{ font-style: italic; margin-bottom: 0.4em; }}
+pre {{ background: #f6f6f6; padding: 1em; overflow-x: auto; border-radius: 4px; }}
+code {{ font-family: monospace; font-size: 0.92em; }}
+p, li, figcaption, td, th {{ overflow-wrap: anywhere; }}
+blockquote {{
+  border-left: 4px solid #ccc;
+  margin-left: 0;
+  padding-left: 1em;
+  color: #555;
+}}
+.footnotes {{ border-top: 1px solid #ccc; margin-top: 3em; font-size: 0.9em; }}
+.bibliography {{ margin-top: 2em; }}
+details {{
+  background: #fafafa;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0.5em 1em;
+  margin: 1em 0;
+}}
+summary {{ cursor: pointer; font-weight: bold; }}
+.toc-panel {{
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  width: auto;
+  max-height: none;
+  overflow: visible;
+  z-index: 20;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}}
+.toc-panel > summary {{
+  list-style: none;
+  margin: 0;
+  padding: 0.5em 0.75em;
+  background: #fff;
+  border: 1px solid #d8d8d8;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+  border-radius: 999px;
+}}
+.toc-panel > summary::after {{
+  content: "▸";
+  margin-left: 0.45em;
+  color: #777;
+}}
+.toc-panel[open] {{
+  width: min(var(--toc-width), calc(100vw - 2rem));
+  max-height: calc(100vh - 5rem);
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #d8d8d8;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.09);
+}}
+.toc-panel[open] > summary {{
+  border: 0;
+  border-bottom: 1px solid #ececec;
+  border-radius: 10px 10px 0 0;
+  box-shadow: none;
+  padding: 0.65em 0.8em;
+}}
+.toc-panel[open] > summary::after {{ content: "▾"; }}
+.toc-panel > summary::-webkit-details-marker {{ display: none; }}
+.toc-nav {{
+  display: none;
+  max-height: calc(100vh - 11rem);
+  overflow: auto;
+  padding: 0.35em 0.35em 0.7em;
+}}
+.toc-panel[open] .toc-nav {{ display: block; }}
+.toc-nav ul {{
+  margin: 0;
+  padding-left: 0.45em;
+  list-style: none;
+}}
+.toc-nav li {{ margin: 0.22em 0; line-height: 1.35; }}
+.toc-nav a {{ color: #1f3557; text-decoration: none; }}
+.toc-nav a:hover {{ text-decoration: underline; }}
+.toc-nav .toc-level-2 {{ margin-left: 0.7em; }}
+.toc-nav .toc-level-3 {{ margin-left: 1.4em; font-size: 0.95em; }}
+.back-to-top {{
+  position: fixed;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 21;
+  text-decoration: none;
+  padding: 0.4em 0.6em;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background: #fff;
+  color: #333;
+}}
+@media (max-width: 1180px) {{
+  body {{
+    padding: 1rem 0.85rem 1.1rem;
+  }}
+  .content-wrap {{
+    width: min(var(--content-max-width), calc(100vw - 1.7rem));
+  }}
+  .toc-panel {{ left: 0.7rem; top: 0.7rem; }}
+  .toc-panel[open] {{
+    width: min(72vw, 240px);
+    max-height: calc(100vh - 4.5rem);
+  }}
+  .toc-nav {{
+    max-height: calc(100vh - 9rem);
+  }}
+  .back-to-top {{
+    left: 0.7rem;
+    bottom: 0.7rem;
+  }}
+}}
 """
 
 
@@ -110,6 +375,10 @@ class HTMLRenderer:
         self._fn_ref_order: dict[str, int] = {}
         self._fn_ref_seq: int = 0
 
+        # Heading index for TOC (标题索引，用于目录)
+        self._toc_entries: list[tuple[int, str, str]] = []
+        self._heading_slug_counts: dict[str, int] = {}
+
     # ── Public API ────────────────────────────────────────────────────────────
 
     def render(self, node: Node) -> str:
@@ -130,19 +399,28 @@ class HTMLRenderer:
         self._fn_defs = {}
         self._fn_ref_order = {}
         self._fn_ref_seq = 0
+        self._toc_entries = []
+        self._heading_slug_counts = {}
 
         body = "".join(self._dispatch(child) for child in doc.children)
+        doc_header = self._render_doc_header(doc)
         footnotes = self._render_footnotes()
 
         if self._mode == "fragment":
             return body
 
         if self._mode == "body":
-            return body + footnotes
+            return doc_header + body + footnotes
 
         # Full document mode (全文模式)
         title = str(doc.metadata.get("title", ""))
         title_tag = f"<title>{_esc(title)}</title>" if title else "<title>Document</title>"
+        image_max_width = _normalize_css_width(
+            doc.metadata.get("html_image_max_width", _DEFAULT_IMAGE_MAX_WIDTH),
+            fallback=_DEFAULT_IMAGE_MAX_WIDTH,
+        )
+        css = _build_css(image_max_width)
+        toc_html = self._render_toc()
 
         # Map locale to HTML lang attribute (本地化映射为 HTML lang 属性)
         lang = "en" if self._locale == "en" else "zh-CN"
@@ -154,14 +432,27 @@ class HTMLRenderer:
             '<meta charset="UTF-8">\n'
             '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
             f"{title_tag}\n"
-            f"<style>\n{_CSS}</style>\n"
+            f"<style>\n{css}</style>\n"
+            f'<link rel="stylesheet" href="{_KATEX_CSS_CDN}">\n'
             "<script>\n"
-            "MathJax = { tex: { inlineMath: [['$','$']] }, "
+            "MathJax = { tex: { inlineMath: [['$','$'], ['\\\\(','\\\\)']], "
+            "displayMath: [['$$','$$'], ['\\\\[','\\\\]']] }, "
             "options: { skipHtmlTags: ['script','style'] } };\n"
             "</script>\n"
-            f'<script src="{_MATHJAX_CDN}" id="MathJax-script" async></script>\n'
+            f'<script src="{_KATEX_JS_CDN}" defer></script>\n'
+            f'<script src="{_KATEX_AUTORENDER_CDN}" defer></script>\n'
+            f'<script src="{_MATHJAX_CDN}" id="MathJax-script" defer></script>\n'
             "</head>\n"
-            "<body>\n" + body + footnotes + "</body>\n"
+            "<body>\n"
+            '<div id="top"></div>\n'
+            f"{toc_html}"
+            '<a href="#top" class="back-to-top" aria-label="Back to top">↑ Top</a>\n'
+            '<main class="content-wrap">\n'
+            f"{doc_header}{body}{footnotes}"
+            "</main>\n"
+            f"<script>\n{_TOC_INTERACTION_JS}\n</script>\n"
+            f"<script>\n{_MATH_RENDER_JS}\n</script>\n"
+            "</body>\n"
             "</html>\n"
         )
 
@@ -214,8 +505,11 @@ class HTMLRenderer:
         """Heading → h1-h6 with optional id anchor (标题渲染)."""
         h = cast(Heading, node)
         level = max(1, min(6, h.level))
-        label = str(node.metadata.get("label", ""))
-        id_attr = f' id="{_esc(label)}"' if label else ""
+        heading_text = self._plain_text(node).strip()
+        hid = self._resolve_heading_id(node, heading_text)
+        id_attr = f' id="{_esc(hid)}"' if hid else ""
+        if hid and heading_text and level <= 3:
+            self._toc_entries.append((level, heading_text, hid))
         content = self._render_children(node)
         return f"<h{level}{id_attr}>{content}</h{level}>\n"
 
@@ -265,13 +559,14 @@ class HTMLRenderer:
         id_attr = f' id="{_esc(label)}"' if label else ""
 
         # Build img tag (构建 img 标签)
-        style = f' style="max-width:{_esc(width)}"' if width and _SAFE_WIDTH_RE.match(width) else ""
+        safe_width = _normalize_css_width(width, fallback="") if width else ""
+        style = f' style="max-width:{_esc(safe_width)}"' if safe_width else ""
         img_tag = f'<img src="{_esc(fig.src)}" alt="{_esc(fig.alt)}"{style} loading="lazy">'
 
         lines = [f"<figure{id_attr}>", f"  {img_tag}"]
 
         if caption:
-            cap_text = f"{prefix} {self._fig_count}: {_esc(caption)}"
+            cap_text = f"{prefix} {self._fig_count}: {self._render_caption_inline(caption)}"
             lines.append(f"  <figcaption>{cap_text}</figcaption>")
 
         # AI generation info as details fold (AI 生成信息折叠块)
@@ -312,7 +607,7 @@ class HTMLRenderer:
         lines: list[str] = [f'<div class="table-wrap"{id_attr}>']
 
         if caption:
-            cap_text = f"{prefix} {self._tab_count}: {_esc(caption)}"
+            cap_text = f"{prefix} {self._tab_count}: {self._render_caption_inline(caption)}"
             lines.append(f'  <p class="table-caption">{cap_text}</p>')
 
         lines.append("  <table>")
@@ -367,6 +662,9 @@ class HTMLRenderer:
             from wenqiao.sanitize import sanitize_html
 
             return sanitize_html(rb.content) + "\n"
+        if rb.kind == "latex":
+            if table_html := self._render_latex_table_raw(rb.content):
+                return table_html
         # LaTeX raw block → collapsible fold (LaTeX 块折叠显示)
         escaped = _esc(rb.content)
         return (
@@ -457,6 +755,228 @@ class HTMLRenderer:
     def _render_soft_break(self, node: Node) -> str:
         """Soft break → newline (preserves Markdown line break semantics) (软换行渲染)."""
         return "\n"
+
+    # ── Layout helpers ───────────────────────────────────────────────────────
+
+    def _render_doc_header(self, doc: Document) -> str:
+        """Render visible doc metadata header (渲染可见文档元数据头)."""
+        title = str(doc.metadata.get("title", "")).strip()
+        author = str(doc.metadata.get("author", "")).strip()
+        date = str(doc.metadata.get("date", "")).strip()
+        abstract = str(doc.metadata.get("abstract", "")).strip()
+        if not any((title, author, date, abstract)):
+            return ""
+        lines = ['<header class="doc-header">']
+        if title:
+            lines.append(f'  <h1 class="doc-title">{_esc(title)}</h1>')
+        if author:
+            lines.append(f'  <p class="doc-author">{_esc(author)}</p>')
+        if date:
+            lines.append(f'  <p class="doc-date">{_esc(date)}</p>')
+        if abstract:
+            abs_html = _esc(abstract).replace("\n", "<br>")
+            lines.append(f'  <p class="doc-abstract"><strong>Abstract.</strong> {abs_html}</p>')
+        lines.append("</header>")
+        return "\n".join(lines) + "\n"
+
+    def _render_toc(self) -> str:
+        """Render left collapsible TOC (渲染左侧可折叠目录)."""
+        if not self._toc_entries:
+            return ""
+        lines = [
+            '<details class="toc-panel">',
+            "  <summary>目录 / Contents</summary>",
+            '  <nav class="toc-nav" aria-label="Table of contents">',
+            "    <ul>",
+        ]
+        for level, text, hid in self._toc_entries:
+            lines.append(
+                f'      <li class="toc-level-{level}">'
+                f'<a href="#{_esc(hid)}">{_esc(text)}</a></li>'
+            )
+        lines.extend(["    </ul>", "  </nav>", "</details>"])
+        return "\n".join(lines) + "\n"
+
+    def _resolve_heading_id(self, node: Node, heading_text: str) -> str:
+        """Resolve heading id from metadata or generated slug (从元数据或 slug 生成标题 id)."""
+        label = str(node.metadata.get("label", "")).strip()
+        if label:
+            return label
+        base = _slugify_heading(heading_text)
+        if not base:
+            base = "section"
+        count = self._heading_slug_counts.get(base, 0) + 1
+        self._heading_slug_counts[base] = count
+        if count == 1:
+            return base
+        return f"{base}-{count}"
+
+    def _plain_text(self, node: Node) -> str:
+        """Extract plain text recursively (递归提取纯文本)."""
+        if isinstance(node, Text):
+            return node.content
+        if isinstance(node, CrossRef):
+            return node.display_text or node.label
+        if isinstance(node, Citation):
+            return node.display_text or ",".join(node.keys)
+        return "".join(self._plain_text(child) for child in node.children)
+
+    def _render_caption_inline(self, caption: str) -> str:
+        """Render caption as inline markdown (图注按行内 Markdown 渲染)."""
+        cap = caption.strip()
+        if not cap:
+            return ""
+        try:
+            cap_doc = parse(cap)
+        except Exception:
+            return _esc(caption)
+        if not cap_doc.children or any(
+            not isinstance(block, Paragraph) for block in cap_doc.children
+        ):
+            return _esc(caption)
+        parts: list[str] = []
+        for block in cap_doc.children:
+            para = cast(Paragraph, block)
+            piece = "".join(self._dispatch(child) for child in para.children).strip()
+            if piece:
+                parts.append(piece)
+        if not parts:
+            return _esc(caption)
+        return " ".join(parts)
+
+    def _render_latex_table_raw(self, content: str) -> str | None:
+        """Convert simple LaTeX table/tabular raw block to HTML table when possible."""
+        if r"\begin{table" not in content or r"\begin{tabular" not in content:
+            return None
+
+        match = _LATEX_TABULAR_RE.search(content)
+        if match is None:
+            return None
+        tabular_spec = match.group(1)
+        tabular_body = match.group(2)
+
+        rows = self._parse_latex_tabular_rows(tabular_body, tabular_spec)
+        if not rows:
+            return None
+
+        caption = self._extract_latex_braced_value(content, "caption")
+        label = self._extract_latex_braced_value(content, "label")
+        id_attr = f' id="{_esc(label)}"' if label else ""
+
+        lines: list[str] = [f'<div class="table-wrap"{id_attr}>']
+        if caption:
+            lines.append(f'  <p class="table-caption">{self._latex_inline_to_html(caption)}</p>')
+        lines.append("  <table>")
+
+        headers = rows[0]
+        body_rows = rows[1:]
+
+        lines.append("    <thead>")
+        lines.append("      <tr>")
+        for cell in headers:
+            lines.append(f"        <th>{self._latex_inline_to_html(cell)}</th>")
+        lines.append("      </tr>")
+        lines.append("    </thead>")
+
+        if body_rows:
+            lines.append("    <tbody>")
+            for row in body_rows:
+                lines.append("      <tr>")
+                for cell in row:
+                    lines.append(f"        <td>{self._latex_inline_to_html(cell)}</td>")
+                lines.append("      </tr>")
+            lines.append("    </tbody>")
+
+        lines.append("  </table>")
+        lines.append("</div>")
+        return "\n".join(lines) + "\n"
+
+    def _count_tabular_columns(self, spec: str) -> int:
+        """Count expected tabular columns from column spec (统计 tabular 列格式中的列数)."""
+        expanded = spec
+        # Expand common repeat syntax *{N}{...} (展开常见重复语法)
+        for _ in range(6):
+            m = re.search(r"\*\{(\d+)\}\{([^{}]+)\}", expanded)
+            if m is None:
+                break
+            n = int(m.group(1))
+            repeated = m.group(2) * n
+            expanded = expanded[: m.start()] + repeated + expanded[m.end() :]
+        # Drop @{} inter-column directives (去掉 @{} 间距指令)
+        expanded = re.sub(r"@\{[^}]*\}", "", expanded)
+        return len(re.findall(r"[lcrpmbxLCRPMBX]", expanded))
+
+    def _parse_latex_tabular_rows(self, body: str, column_spec: str = "") -> list[list[str]]:
+        """Parse basic tabular rows split by \\\\ and & (解析基础 tabular 行列)."""
+        expected_cols = self._count_tabular_columns(column_spec)
+        cleaned = body.replace("\r\n", "\n").replace("\r", "\n")
+        cleaned = re.sub(r"(?m)^\s*%.*$", "", cleaned)
+        cleaned = cleaned.replace(r"\\hline", r"\\")
+        cleaned = cleaned.replace(r"\hline", "\n")
+        cleaned = re.sub(r"(?<!\\)\\\\(?:\[[^\]]*\])?", "\n", cleaned)
+        # Raw blocks from <!-- begin: raw --> may flatten lines and collapse "\\"
+        # between rows to "\"; recover rows on likely first-cell boundaries.
+        cleaned = re.sub(r"\\(?=[A-Z0-9\u4e00-\u9fff])", "\n", cleaned)
+
+        rows: list[list[str]] = []
+        for chunk in cleaned.splitlines():
+            line = re.sub(r"\\+$", "", chunk).strip()
+            if not line:
+                continue
+            cells = [c.strip() for c in line.split("&")]
+            if not any(cells):
+                continue
+            if expected_cols > 0 and len(cells) > expected_cols and len(cells) % expected_cols == 0:
+                for i in range(0, len(cells), expected_cols):
+                    group = [c.strip() for c in cells[i : i + expected_cols]]
+                    if any(group):
+                        rows.append(group)
+                continue
+            rows.append(cells)
+        return rows
+
+    def _extract_latex_braced_value(self, content: str, command: str) -> str:
+        r"""Extract \command{...} value with brace balancing (提取带平衡括号的命令值)."""
+        prefix = f"\\{command}{{"
+        start = content.find(prefix)
+        if start < 0:
+            return ""
+        i = start + len(prefix)
+        depth = 1
+        while i < len(content):
+            ch = content[i]
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    return content[start + len(prefix) : i].strip()
+            i += 1
+        return ""
+
+    def _latex_inline_to_html(self, text: str) -> str:
+        """Render a minimal subset of LaTeX inline markup to HTML (最小子集 LaTeX 行内转换)."""
+        src = text.strip()
+        if not src:
+            return ""
+        # Row flattening may leave a stray "\" before first cell text.
+        src = re.sub(r"^\\(?=[A-Z0-9\u4e00-\u9fff])", "", src)
+
+        # Promote \textbf{...} to <strong> while escaping plain text.
+        out: list[str] = []
+        pos = 0
+        for m in re.finditer(r"\\textbf\{([^{}]*)\}", src):
+            if m.start() > pos:
+                out.append(_esc(src[pos : m.start()]))
+            out.append(f"<strong>{_esc(m.group(1))}</strong>")
+            pos = m.end()
+        if pos < len(src):
+            out.append(_esc(src[pos:]))
+
+        rendered = "".join(out)
+        rendered = rendered.replace(r"\%", "%").replace(r"\_", "_")
+        rendered = rendered.replace(r"\&", "&")
+        return rendered
 
     # ── Footnotes and bibliography ────────────────────────────────────────────
 
