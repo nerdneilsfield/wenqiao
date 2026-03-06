@@ -58,6 +58,7 @@ ATTACH_UP_DIRECTIVES = frozenset(
         "label",
         "caption",
         "width",
+        "height",
         "placement",
         "centering",
         "options",

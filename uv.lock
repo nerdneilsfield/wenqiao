@@ -602,6 +602,21 @@ wheels = [
 ]
 
 [[package]]
+name = "rumdl"
+version = "0.1.42"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e0/9e/8c160eccdb2f3c3853aad60d384eb75ebd3593a7ca414cc29f814ac6d58e/rumdl-0.1.42.tar.gz", hash = "sha256:4f65f27fa4a1cf082e99eb5ebcc884583f762ccb8691120ce5fb2e4bdd5f05f4", size = 2253167 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e9/a4/c80a85e41abebe106d88232379c314562a2194feea75985283b782685059/rumdl-0.1.42-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:bfbf31a4c264ad3d3877d8a35aa8b33e640b585995b37e6fb1e44e4ff212f151", size = 5315784 },
+    { url = "https://files.pythonhosted.org/packages/f1/49/8804afc51e3bc249a1e8dbdbd6f7b84b426d63d969aeb049d68dd7ec1c64/rumdl-0.1.42-py3-none-macosx_11_0_arm64.whl", hash = "sha256:1068e68bb164a2c8a9af04c55a5fd6a8e815e16ea07e28b885c1c25998f30b24", size = 4950370 },
+    { url = "https://files.pythonhosted.org/packages/96/4b/23a6b65d60f5e1d7bbd96c326ef623942a63e1f4bee8e566b35398d87378/rumdl-0.1.42-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:120893ce699b0483f0aa731785c3d42800497283e4cf4562fb1215db4bdee58a", size = 5164155 },
+    { url = "https://files.pythonhosted.org/packages/21/25/b9e0c6ba7ab7fb672012a028077d3cb3bf3f69c58c1e1eb77fc4dbc49f6b/rumdl-0.1.42-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:f5de287276001165a350bf4d81015230358cd49f0d1c9e33c6a656df2aa0c7b7", size = 5543883 },
+    { url = "https://files.pythonhosted.org/packages/1c/6c/844776c9e90555e1250e88abcbf4e0d9593f238a4ece9db9ada615539915/rumdl-0.1.42-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:583c2ff4870ff1efe1135c1188fd678a78b31a84ac4d13ab302a236a8175c6f5", size = 5165687 },
+    { url = "https://files.pythonhosted.org/packages/5e/1a/bcb9d51e6383dc96e86812cab3817eb4a9f3d4ec9fbf165e0f0cd112d4c4/rumdl-0.1.42-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:8ce5da8b225aa1ddc4df6fe4bc29e3fea624076419b179cc4ebde9abe1a41bf2", size = 5538085 },
+    { url = "https://files.pythonhosted.org/packages/a2/36/3eddd0760ebd935f86ffa480569508804edf556fd5bb40ea08cbf2b7a95e/rumdl-0.1.42-py3-none-win_amd64.whl", hash = "sha256:692ea867b3ab59afd8ac8ece6729f2a8c68d4c4f316a8a53c6ce3633f1324d04", size = 5631395 },
+]
+
+[[package]]
 name = "sniffio"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -652,6 +667,7 @@ dependencies = [
     { name = "markdown-it-py" },
     { name = "mdit-py-plugins" },
     { name = "ruamel-yaml" },
+    { name = "rumdl" },
 ]
 
 [package.optional-dependencies]
@@ -674,6 +690,7 @@ requires-dist = [
     { name = "mdit-py-plugins", specifier = ">=0.4" },
     { name = "openai", marker = "extra == 'figures'", specifier = ">=1.0" },
     { name = "ruamel-yaml", specifier = ">=0.18" },
+    { name = "rumdl", specifier = ">=0.1.42" },
 ]
 
 [package.metadata.requires-dev]

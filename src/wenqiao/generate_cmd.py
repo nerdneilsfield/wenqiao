@@ -21,7 +21,7 @@ from wenqiao.pipeline import parse_and_process
 @click.option(
     "--figures-config",
     "figures_config",
-    type=click.Path(path_type=Path),
+    type=click.Path(exists=True, path_type=Path),
     default=None,
     help="TOML config for AI backend (AI 后端 TOML 配置: API key, model 等)",
 )
@@ -54,7 +54,8 @@ from wenqiao.pipeline import parse_and_process
     "--concurrency",
     default=4,
     show_default=True,
-    help="Max concurrent generations (最大并发生成数)",
+    type=click.IntRange(min=1),
+    help="Max concurrent generations, must be ≥ 1 (最大并发生成数，至少为 1)",
 )
 @click.option(
     "--start-id",
@@ -154,8 +155,16 @@ def generate_cmd(
         click.echo(f"[generate] Unsupported backend type: {backend_type}", err=True)
         raise SystemExit(1)
 
+    # Pre-count skippable jobs to give accurate status (预计算可跳过的作业数，提供准确状态)
+    if not force:
+        pending = sum(1 for j in jobs if not j.output_path.is_file())
+        skippable = len(jobs) - pending
+        skip_msg = f", {skippable} will be skipped (将跳过 {skippable} 个)" if skippable else ""
+    else:
+        pending = len(jobs)
+        skip_msg = ""
     click.echo(
-        f"[generate] {len(jobs)} figure(s) to generate "
+        f"[generate] {pending} figure(s) to generate{skip_msg} "
         f"(concurrency={concurrency}) ...",
         err=True,
     )

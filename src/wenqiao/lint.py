@@ -87,9 +87,9 @@ def fix_math_spacing(source: str) -> str:
 # Rule 3: BOLD-SPACING — insert space between CJK and bold spans
 # ---------------------------------------------------------------------------
 
-# 匹配完整加重区间 **content**（内容无 * 或换行）
-# Match a complete bold span **content** (no * or newline inside)
-_BOLD_SPAN = r"\*\*[^*\n]+\*\*"
+# 匹配完整加重区间 **content**（首尾都不是空白，避免把闭合 ** 误判为开头）
+# Match a complete bold span **content** (no leading/trailing spaces in content)
+_BOLD_SPAN = r"(?<!\*)\*\*[^\s*\n](?:[^*\n]*?[^\s*\n])?\*\*(?!\*)"
 
 # 中文紧贴加重区间之前（前补空格）(CJK immediately before **span**)
 _BOLD_BEFORE_CJK_RE = re.compile(r"([" + _CJK + r"])(" + _BOLD_SPAN + r")")
@@ -101,7 +101,7 @@ def fix_bold_spacing(source: str) -> str:
     """Insert a space between CJK characters and bold spans (**text**).
 
     在中文字符与完整加重区间 **text** 之间插入空格（前后两侧）。
-    以整个区间为匹配单元，避免在区间内部插入空格。
+    使用完整区间匹配，并限制内容首尾非空白，避免跨区间误匹配。
 
     Args:
         source: Raw .mid.md source text (原始 .mid.md 源文本)
@@ -119,10 +119,9 @@ def fix_bold_spacing(source: str) -> str:
 # Rule 4: ITALIC-SPACING — insert space between CJK and italic spans
 # ---------------------------------------------------------------------------
 
-# 匹配完整斜体区间 *content*（前后均为孤立 *，不是 **；内容无 * 或换行）
-# Match a complete italic span *content* (both * are lone, not **, no * or newline inside)
-# (?<!\*) on the opening * prevents matching the trailing * of a ** bold closer
-_ITALIC_SPAN = r"(?<!\*)\*(?!\*)[^*\n]+(?<!\*)\*(?!\*)"
+# 匹配完整斜体区间 *content*（孤立 *，且内容首尾非空白）
+# Match a complete italic span *content* (lone * markers, no leading/trailing spaces)
+_ITALIC_SPAN = r"(?<!\*)\*(?!\*)[^\s*\n](?:[^*\n]*?[^\s*\n])?(?<!\*)\*(?!\*)"
 
 # 中文紧贴斜体区间之前（前补空格）(CJK immediately before *span*)
 _ITALIC_BEFORE_CJK_RE = re.compile(r"([" + _CJK + r"])(" + _ITALIC_SPAN + r")")
@@ -134,7 +133,7 @@ def fix_italic_spacing(source: str) -> str:
     """Insert a space between CJK characters and italic spans (*text*).
 
     在中文字符与完整斜体区间 *text* 之间插入空格（前后两侧）。
-    使用否定前/后瞻区分孤立 * 与 ** 加重标记。
+    使用孤立 * 的完整区间匹配，避免与 ** 加重标记冲突。
 
     Args:
         source: Raw .mid.md source text (原始 .mid.md 源文本)
@@ -158,19 +157,22 @@ def fix_italic_spacing(source: str) -> str:
 #   4. fix_italic_spacing   — * 周围补空格（此时 ** 已有空格，lookahead 安全）
 
 
-def fix_common_errors(source: str) -> str:
+def fix_common_errors(source: str, *, fix_emphasis_spacing: bool = True) -> str:
     """Apply all common-error fixes in order.
 
     按序应用所有常见错误修复。
 
     Args:
         source: Raw .mid.md source text (原始 .mid.md 源文本)
+        fix_emphasis_spacing: Whether to apply bold/italic spacing fixes.
+            (是否应用加重/斜体两侧空格修复)
 
     Returns:
         Fixed source text (修正后的文本)
     """
     source = fix_math_backslash(source)
     source = fix_math_spacing(source)
-    source = fix_bold_spacing(source)
-    source = fix_italic_spacing(source)
+    if fix_emphasis_spacing:
+        source = fix_bold_spacing(source)
+        source = fix_italic_spacing(source)
     return source

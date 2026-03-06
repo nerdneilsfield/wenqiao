@@ -92,13 +92,20 @@ class LaTeXBlockMixin:
         """
         placement = str(meta.get("placement", "htbp"))
         width = str(meta.get("width", ""))
+        height = str(meta.get("height", ""))
         caption = str(meta.get("caption", ""))
         label = str(meta.get("label", ""))
 
         lines = [f"\\begin{{figure}}[{placement}]"]
         lines.append("\\centering")
 
-        gfx_opts = f"width={width}" if width else ""
+        # Build includegraphics options from width and/or height (构建 includegraphics 选项)
+        gfx_parts: list[str] = []
+        if width:
+            gfx_parts.append(f"width={width}")
+        if height:
+            gfx_parts.append(f"height={height}")
+        gfx_opts = ", ".join(gfx_parts)
         if gfx_opts:
             lines.append(f"\\includegraphics[{gfx_opts}]{{{src}}}")
         else:

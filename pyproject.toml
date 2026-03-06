@@ -21,6 +21,7 @@ dependencies = [
     "mdit-py-plugins>=0.4",
     "ruamel-yaml>=0.18",
     "click>=8.0",
+    "rumdl>=0.1.42",
 ]
 
 [project.optional-dependencies]

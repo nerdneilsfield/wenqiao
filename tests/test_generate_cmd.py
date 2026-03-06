@@ -68,6 +68,29 @@ class TestGenerateCmd:
         assert result.exit_code == 0
         instance.async_generate.assert_called()
 
+    def test_generate_concurrency_zero_rejected(self, tmp_path: Path) -> None:
+        """--concurrency 0 is rejected at CLI boundary (并发数 0 被 Click 拒绝)."""
+        src = tmp_path / "doc.mid.md"
+        src.write_text("# Hello\n")
+        result = CliRunner().invoke(main, ["generate", str(src), "--concurrency", "0"])
+        assert result.exit_code != 0
+
+    def test_generate_concurrency_negative_rejected(self, tmp_path: Path) -> None:
+        """--concurrency -1 is rejected at CLI boundary (负数并发数被 Click 拒绝)."""
+        src = tmp_path / "doc.mid.md"
+        src.write_text("# Hello\n")
+        result = CliRunner().invoke(main, ["generate", str(src), "--concurrency", "-1"])
+        assert result.exit_code != 0
+
+    def test_convert_concurrency_zero_rejected(self, tmp_path: Path) -> None:
+        """convert --concurrency 0 is rejected at CLI boundary (convert 并发数 0 被拒绝)."""
+        src = tmp_path / "doc.mid.md"
+        src.write_text("# Hello\n")
+        result = CliRunner().invoke(
+            main, ["convert", str(src), "--generate-figures", "--concurrency", "0"]
+        )
+        assert result.exit_code != 0
+
     def test_start_end_id_slices_jobs(self, tmp_path: Path) -> None:
         """--start-id / --end-id slices jobs by 1-based index (范围切片)."""
         md = ""

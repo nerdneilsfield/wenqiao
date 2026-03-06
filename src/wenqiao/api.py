@@ -13,6 +13,8 @@ from pathlib import Path
 
 from wenqiao.config import _PRESETS, WenqiaoConfig
 from wenqiao.diagnostic import DiagCollector, Diagnostic
+from wenqiao.lint import fix_common_errors
+from wenqiao.markdown import MarkdownRenderer
 from wenqiao.nodes import Document
 from wenqiao.pipeline import (
     build_config,
@@ -254,11 +256,12 @@ def validate_text(
 
 
 def format_text(source: str | Path) -> str:
-    """Format academic Markdown via round-trip normalisation.
+    """Format academic Markdown via lightweight textual normalisation.
 
-    通过往返规范化格式化学术 Markdown。
+    通过轻量文本规范化格式化学术 Markdown。
 
-    Parse → process_comments → MarkdownRenderer(mode="full").render().
+    Applies common lint-style fixes without AST round-trip.
+    仅应用常见 lint 级修复，不做 AST 往返重渲染。
 
     Args:
         source: Markdown text or file path (Markdown 文本或文件路径)
@@ -266,11 +269,26 @@ def format_text(source: str | Path) -> str:
     Returns:
         Formatted Markdown text (格式化后的 Markdown 文本)
     """
-    from wenqiao.markdown import MarkdownRenderer
-
     text, filename = _read_source(source)
-    diag = DiagCollector(filename)
 
+    # Keep .mid.md syntax stable (cite/ref directives, ai-* blocks, labels).
+    mid_markers = (
+        "(cite:",
+        "(ref:",
+        "<!-- label:",
+        "<!-- caption:",
+        "<!-- ai-generated:",
+        "<!-- ai-prompt:",
+        "<!-- begin:",
+        "<!-- end:",
+    )
+    is_mid = any(marker in text for marker in mid_markers)
+    text = fix_common_errors(text, fix_emphasis_spacing=not is_mid)
+
+    if is_mid:
+        return text
+
+    diag = DiagCollector(filename)
     east = parse_and_process(text, filename, diag)
     renderer = MarkdownRenderer(mode="full", diag=diag)
     return renderer.render(east)

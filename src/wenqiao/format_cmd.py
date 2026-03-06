@@ -1,8 +1,8 @@
 """format 子命令：规范化学术 Markdown 源文件。
 
 Format subcommand: normalize academic Markdown source files.
-Pipeline: fix common errors → rumdl → wenqiao round-trip.
-流水线：修复常见错误 → rumdl 格式化 → wenqiao 往返规范化。
+Pipeline: fix common errors → optional rumdl.
+流水线：修复常见错误 → 可选 rumdl 格式化。
 """
 
 from __future__ import annotations
@@ -20,6 +20,22 @@ from wenqiao.diagnostic import DiagCollector
 from wenqiao.lint import fix_common_errors
 from wenqiao.markdown import MarkdownRenderer
 from wenqiao.pipeline import parse_and_process
+
+_MID_MARKERS = (
+    "(cite:",
+    "(ref:",
+    "<!-- label:",
+    "<!-- caption:",
+    "<!-- ai-generated:",
+    "<!-- ai-prompt:",
+    "<!-- begin:",
+    "<!-- end:",
+)
+
+
+def _looks_like_mid(text: str) -> bool:
+    """Heuristic: detect wenqiao-specific .mid.md syntax."""
+    return any(marker in text for marker in _MID_MARKERS)
 
 
 def _run_rumdl(text: str) -> str:
@@ -111,27 +127,34 @@ def format_cmd(
 ) -> None:
     """Format an academic Markdown file (格式化学术 Markdown 文件).
 
-    Pipeline: fix common errors → rumdl fmt → wenqiao round-trip.
-    流水线：修复常见错误 → rumdl 格式化 → wenqiao 往返规范化。
+    Pipeline: fix common errors → optional rumdl.
+    流水线：修复常见错误 → 可选 rumdl 格式化。
     """
     original = input.read_text(encoding="utf-8")
-    filename = str(input)
+
+    is_mid = _looks_like_mid(original)
 
     # 步骤 1: 修复常见错误（数学双反斜杠、数学/加重/斜体间距）
     # Step 1: fix common errors (math backslash, math/bold/italic spacing)
-    text = fix_common_errors(original)
+    # For wenqiao .mid.md content, keep emphasis spacing unchanged to avoid
+    # large style churn in long-form manuscripts.
+    text = fix_common_errors(original, fix_emphasis_spacing=not is_mid)
 
     # 步骤 2: rumdl 格式化（可跳过）
     # Step 2: rumdl formatting (optional)
     if not skip_rumdl:
         text = _run_rumdl(text)
 
-    # 步骤 3: wenqiao round-trip（解析 → 处理注释 → 渲染）
-    # Step 3: wenqiao round-trip (parse → process comments → render)
-    diag = DiagCollector(filename)
-    east = parse_and_process(text, filename, diag)
-    renderer = MarkdownRenderer(mode="full", diag=diag)
-    formatted = renderer.render(east)
+    # Wenqiao .mid.md files should avoid round-trip rendering because it may
+    # rewrite citation/reference and figure structures into non-mid forms.
+    if is_mid:
+        formatted = text
+    else:
+        filename = str(input)
+        diag = DiagCollector(filename)
+        east = parse_and_process(text, filename, diag)
+        renderer = MarkdownRenderer(mode="full", diag=diag)
+        formatted = renderer.render(east)
 
     # 比较原文与格式化结果 (Compare original and formatted)
     is_clean = original == formatted

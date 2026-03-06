@@ -48,3 +48,4 @@ uv.lock.bak
 .claude/*.log
 reviews/*
 !reviews/.gitkeep
+generator_config.toml

@@ -164,7 +164,8 @@ def cli(ctx: click.Context) -> None:
     "concurrency",
     default=4,
     show_default=True,
-    help="Max concurrent figure generations (最大并发图片生成数)",
+    type=click.IntRange(min=1),
+    help="Max concurrent figure generations, must be ≥ 1 (最大并发图片生成数，至少为 1)",
 )
 def convert_cmd(
     input: Path,
