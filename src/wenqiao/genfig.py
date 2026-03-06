@@ -7,6 +7,7 @@ a FigureRunner implementation to generate them.
 
 from __future__ import annotations
 
+import asyncio
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
@@ -103,7 +104,8 @@ def collect_jobs(
                 prompt=prompt,
                 model=ai.get("model") if isinstance(ai.get("model"), str) else None,
                 params=ai.get("params") if isinstance(ai.get("params"), dict) else None,
-                label=str(node.metadata.get("label", src)),  # Label for writeback matching (writeback 匹配标签)
+                # Label for writeback matching (writeback 匹配标签)
+                label=str(node.metadata.get("label", src)),
                 source_file=None,  # Caller sets this if writeback is needed (调用方按需设置)
             )
         )
@@ -128,6 +130,19 @@ class FigureRunner(ABC):
             True if generation succeeded and output file exists (成功返回 True)
         """
         ...
+
+    async def async_generate(self, job: FigureJob) -> bool:
+        """Async generate — default wraps sync generate() in a thread.
+
+        默认实现：在线程中调用同步 generate()，子类可覆盖以使用真正的异步客户端。
+
+        Args:
+            job: Figure generation job (图片生成作业)
+
+        Returns:
+            True if generation succeeded (成功返回 True)
+        """
+        return await asyncio.to_thread(self.generate, job)
 
 
 def generate_figure_job(
@@ -195,3 +210,102 @@ def run_generate_figures(
                 echo(f"[generate-figures] ✗ {job.src} (failed)")
 
     return (success, fail)
+
+
+def _write_ai_done(source_path: Path, label: str) -> None:
+    """Insert ai-done marker after the label comment line in source file.
+
+    在源文件的标签注释行后插入 ai-done 标记。幂等：已存在则不重复插入。
+
+    Args:
+        source_path: Path to .mid.md source file (源文件路径)
+        label: Figure label to locate in file (用于定位的图片标签)
+    """
+    marker = "<!-- ai-done: true -->"
+    lines = source_path.read_text(encoding="utf-8").splitlines(keepends=True)
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        out.append(line)
+        # Locate the label comment (定位标签注释行)
+        if f"label: {label}" in line and "<!--" in line:
+            # Check next line is not already the marker (检查下一行是否已有标记)
+            next_line = lines[i + 1] if i + 1 < len(lines) else ""
+            if marker not in next_line:
+                out.append(marker + "\n")
+        i += 1
+    source_path.write_text("".join(out), encoding="utf-8")
+
+
+async def run_generate_figures_async(
+    jobs: list[FigureJob],
+    runner: FigureRunner,
+    concurrency: int = 4,
+    force: bool = False,
+    writeback: bool = True,
+    echo: Callable[[str], object] | None = None,
+) -> tuple[int, int]:
+    """Run figure generation concurrently with a semaphore.
+
+    使用信号量并发运行图片生成流程。
+
+    Args:
+        jobs: List of figure jobs (图片作业列表)
+        runner: FigureRunner implementation (FigureRunner 实现)
+        concurrency: Max concurrent generations (最大并发数)
+        force: Re-generate even if file exists (强制重新生成)
+        writeback: Write ai-done marker to source file on success (成功后写回 ai-done 标记)
+        echo: Optional progress callback, e.g. click.echo (进度输出函数，可选)
+
+    Returns:
+        (success_count, fail_count) tuple (成功数, 失败数 元组)
+    """
+    if not jobs:
+        if echo:
+            echo("[generate-figures] No AI figures to generate (无待生成的 AI 图片).")
+        return (0, 0)
+
+    sem = asyncio.Semaphore(concurrency)
+    success_count = 0
+    fail_count = 0
+
+    async def _run(job: FigureJob) -> bool | None:
+        # Skip if output exists and not forcing (已存在且不强制时跳过)
+        if not force and job.output_path.is_file():
+            if echo:
+                echo(f"[generate-figures] skip {job.src} (exists)")
+            return None  # Skipped — not success, not fail (跳过)
+
+        job.output_path.parent.mkdir(parents=True, exist_ok=True)
+        async with sem:
+            try:
+                ok = await runner.async_generate(job)
+            except Exception as exc:
+                if echo:
+                    echo(f"[generate-figures] ✗ {job.src} ({exc})")
+                return False
+
+        # Post-condition: output file must exist (后置条件：输出文件必须存在)
+        if not (ok and job.output_path.is_file()):
+            if echo:
+                echo(f"[generate-figures] ✗ {job.src} (no output)")
+            return False
+
+        if echo:
+            echo(f"[generate-figures] ✓ {job.src}")
+
+        # Writeback ai-done to source file (写回 ai-done 到源文件)
+        if writeback and job.source_file is not None and job.label:
+            _write_ai_done(job.source_file, job.label)
+
+        return True
+
+    results = await asyncio.gather(*[_run(j) for j in jobs], return_exceptions=True)
+    for r in results:
+        if r is True:
+            success_count += 1
+        elif r is False or isinstance(r, Exception):
+            fail_count += 1
+        # None = skipped, not counted (None 表示跳过，不计入)
+    return (success_count, fail_count)
