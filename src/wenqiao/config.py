@@ -35,7 +35,7 @@ _DEFAULTS: dict[str, object] = {
     "target": "latex",
     "mode": "full",
     "documentclass": "article",
-    "classoptions": ["12pt", "a4paper"],
+    "classoptions": ["10pt", "a4paper"],
     "packages": ["amsmath", "graphicx"],
     "package_options": {},
     "bibliography": "",
@@ -65,11 +65,13 @@ _PRESET_PACKAGES = [
     "amsmath",       # math environments (数学环境)
     "amssymb",       # math symbols ∀ ∃ etc. (数学符号)
     "graphicx",      # images (图片)
+    "geometry",      # page margins — load early (页面边距，需早加载)
     "xcolor",        # colors — must load before hyperref (颜色支持，须在 hyperref 之前加载)
     "listings",      # code blocks / lstlisting (代码块)
     "amsthm",        # theorem / lemma / proof environments (定理/引理/证明)
     "algorithm2e",   # algorithm environments (算法环境)
     "booktabs",      # professional table rules \toprule etc. (专业表格线)
+    "makecell",      # \makecell for multi-line table cells (表格单元格换行)
     "hyperref",      # cross-references and hyperlinks — load last (交叉引用与超链接，最后加载)
 ]
 
@@ -77,15 +79,17 @@ _PRESET_PACKAGES = [
 _PRESETS: dict[str, dict[str, object]] = {
     "zh": {
         "documentclass": "ctexart",
-        "classoptions": ["12pt", "a4paper"],
+        "classoptions": ["10pt", "a4paper"],
         "packages": list(_PRESET_PACKAGES),
+        "package_options": {"geometry": "margin=2.0cm"},
         "locale": "zh",
         "preamble": "% Compiled with XeLaTeX recommended (建议使用 XeLaTeX 编译)\n",
     },
     "en": {
         "documentclass": "article",
-        "classoptions": ["12pt", "a4paper"],
+        "classoptions": ["10pt", "a4paper"],
         "packages": list(_PRESET_PACKAGES),
+        "package_options": {"geometry": "margin=2.0cm"},
         "locale": "en",
     },
 }
@@ -105,7 +109,7 @@ class WenqiaoConfig:
 
     # LaTeX options (LaTeX 选项)
     documentclass: str = "article"
-    classoptions: list[str] = field(default_factory=lambda: ["12pt", "a4paper"])
+    classoptions: list[str] = field(default_factory=lambda: ["10pt", "a4paper"])
     packages: list[str] = field(default_factory=lambda: ["amsmath", "graphicx"])
     package_options: dict[str, str] = field(default_factory=dict)
     bibliography: str = ""
