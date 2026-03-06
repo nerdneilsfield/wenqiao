@@ -54,6 +54,19 @@ class MarkdownBlockMixin:
         """Render children (由子类实现)."""
         return ""
 
+    def _render_caption_inline(self, caption: str) -> str:
+        """Render caption inline content (由子类按需覆盖)."""
+        return _esc(caption)
+
+    def _format_citation(self, node: Citation, *, escape_display: bool) -> str:
+        """Format citation refs consistently across contexts (统一引用格式化)."""
+        refs = "".join(f"[^{key}]" for key in node.keys)
+        if node.display_text:
+            if escape_display:
+                return f"{_esc(node.display_text)}{refs}"
+            return f"{node.display_text}{refs}"
+        return refs
+
     def _render_figure(self, node: Node) -> str:
         """Figure 节点渲染 (Figure node rendering)."""
         f = cast(Figure, node)
@@ -82,8 +95,9 @@ class MarkdownBlockMixin:
         ]
         fig_label = self._labels["figure"]
         if caption:
+            caption_html = self._render_caption_inline(caption)
             lines.append(
-                f"  <figcaption><strong>{fig_label} {n}</strong>: {_esc(caption)}</figcaption>"
+                f"  <figcaption><strong>{fig_label} {n}</strong>: {caption_html}</figcaption>"
             )
         else:
             lines.append(f"  <figcaption><strong>{fig_label} {n}</strong></figcaption>")
@@ -131,8 +145,9 @@ class MarkdownBlockMixin:
         ]
         tab_label = self._labels["table"]
         if caption:
+            caption_html = self._render_caption_inline(caption)
             lines.append(
-                f"  <figcaption><strong>{tab_label} {n}</strong>: {_esc(caption)}</figcaption>"
+                f"  <figcaption><strong>{tab_label} {n}</strong>: {caption_html}</figcaption>"
             )
         else:
             lines.append(f"  <figcaption><strong>{tab_label} {n}</strong></figcaption>")
@@ -166,8 +181,7 @@ class MarkdownBlockMixin:
                 return text
             return f'<a href="{_esc(node.url)}">{text}</a>'
         if isinstance(node, Citation):
-            refs = "".join(f"[^{key}]" for key in node.keys)
-            return f"{_esc(node.display_text)}{refs}" if node.display_text else refs
+            return self._format_citation(node, escape_display=True)
         if isinstance(node, CrossRef):
             return f'<a href="#{_esc(node.label)}">{_esc(node.display_text)}</a>'
         if isinstance(node, SoftBreak):
