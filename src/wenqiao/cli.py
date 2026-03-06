@@ -153,6 +153,12 @@ def cli(ctx: click.Context) -> None:
     help="TOML config for runner (runner 的 TOML 配置: API key, model 等)",
 )
 @click.option(
+    "--figures-model",
+    "figures_model",
+    default=None,
+    help="Select model profile by name from [[models]] in figures config (从配置 [[models]] 中按 name 选择 profile)",
+)
+@click.option(
     "--force-regenerate",
     "force_regenerate",
     is_flag=True,
@@ -184,6 +190,7 @@ def convert_cmd(
     bibliography_mode: str | None,
     generate_figures: bool,
     figures_config: Path | None,
+    figures_model: str | None,
     force_regenerate: bool,
     concurrency: int,
 ) -> None:
@@ -261,7 +268,7 @@ def convert_cmd(
         from wenqiao.genfig_openai import OpenAIFigureRunner
 
         base_dir = Path(filename).parent if filename != "<stdin>" else Path.cwd()
-        runner = OpenAIFigureRunner(config=figures_config)
+        runner = OpenAIFigureRunner(config=figures_config, model=figures_model)
 
         try:
             jobs = collect_jobs(east, base_dir=base_dir, force=force_regenerate)
