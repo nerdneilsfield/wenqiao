@@ -27,6 +27,7 @@ from wenqiao.validate import (
     validate_bib,
     validate_crossrefs,
     validate_images,
+    validate_placements,
 )
 
 # ── Walker unit tests (Walker 单元测试) ──────────────────────────────────────
@@ -143,6 +144,23 @@ def test_validate_images_skips_urls() -> None:
     assert len(diag.warnings) == 0
 
 
+def test_validate_valid_placement_has_no_warning() -> None:
+    """合法 placement 不产生警告（Valid placement produces no warning）."""
+    doc = Document(children=[Figure(src="img.png", metadata={"placement": "htbp"})])
+    diag = DiagCollector("test")
+    validate_placements(doc, diag)
+    assert len(diag.warnings) == 0
+
+
+def test_validate_invalid_placement_warns() -> None:
+    """非法 placement 产生警告（Invalid placement produces warning）."""
+    doc = Document(children=[Figure(src="img.png", metadata={"placement": "foo?"})])
+    diag = DiagCollector("test")
+    validate_placements(doc, diag)
+    assert len(diag.warnings) == 1
+    assert "foo?" in diag.warnings[0].message
+
+
 # ── CLI integration tests (CLI 集成测试) ─────────────────────────────────────
 
 
@@ -212,3 +230,15 @@ def test_validate_bib_from_directive(tmp_path: Path) -> None:
     combined = result.output + (result.stderr_bytes or b"").decode()
     # Should warn about not_in_bib, not about found (应警告 not_in_bib，不警告 found)
     assert "not_in_bib" in combined
+
+
+def test_validate_invalid_placement_in_cli(tmp_path: Path) -> None:
+    """CLI 输出非法 placement 警告（CLI warns on invalid placement）."""
+    src = tmp_path / "placement.mid.md"
+    src.write_text(
+        "![alt](img.png)\n<!-- caption: Cap -->\n<!-- placement: foo? -->\n",
+        encoding="utf-8",
+    )
+    result = CliRunner().invoke(main, ["validate", str(src), "--verbose"])
+    combined = result.output + (result.stderr_bytes or b"").decode()
+    assert "foo?" in combined

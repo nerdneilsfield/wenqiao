@@ -9,6 +9,7 @@ from wenqiao.nodes import (
     Paragraph,
     RawBlock,
     Strong,
+    Table,
 )
 from wenqiao.parser import parse
 
@@ -41,6 +42,27 @@ def test_caption_label_attach_to_image():
     assert fig.metadata.get("label") == "fig:a"
 
 
+def test_placement_attaches_to_image() -> None:
+    """placement 指令附着到图片（placement directive attaches to image）."""
+    text = "![fig](a.png)\n<!-- placement: h -->\n"
+    doc = parse(text)
+    east = process_comments(doc, "test.md")
+    fig = east.children[0]
+    if isinstance(fig, Paragraph) and len(fig.children) == 1:
+        fig = fig.children[0]
+    assert fig.metadata.get("placement") == "h"
+
+
+def test_placement_attaches_to_table() -> None:
+    """placement 指令附着到表格（placement directive attaches to table）."""
+    text = "| A |\n|---|\n| 1 |\n<!-- placement: h -->\n"
+    doc = parse(text)
+    east = process_comments(doc, "test.md")
+    table = east.children[0]
+    assert isinstance(table, Table)
+    assert table.metadata.get("placement") == "h"
+
+
 def test_begin_end_creates_environment():
     text = "<!-- begin: algorithm -->\nStep 1\n<!-- end: algorithm -->\n"
     doc = parse(text)
@@ -57,6 +79,32 @@ def test_begin_end_raw_creates_raw_block():
     raws = [c for c in east.children if isinstance(c, RawBlock)]
     assert len(raws) == 1
     assert "\\newcommand" in raws[0].content
+
+
+def test_begin_end_raw_preserves_latex_row_separators() -> None:
+    """raw 块保留 LaTeX 行分隔符 \\\\（raw block preserves LaTeX row separators）."""
+    text = (
+        "<!-- begin: raw -->\n"
+        "\\begin{tabular}{ll}\n"
+        "\\hline\n"
+        "A & B \\\\\n"
+        "C & D \\\\\n"
+        "\\hline\n"
+        "\\end{tabular}\n"
+        "<!-- end: raw -->\n"
+    )
+    doc = parse(text)
+    east = process_comments(doc, "test.md")
+    raws = [c for c in east.children if isinstance(c, RawBlock)]
+    assert len(raws) == 1
+    assert raws[0].content == (
+        "\\begin{tabular}{ll}\n"
+        "\\hline\n"
+        "A & B \\\\\n"
+        "C & D \\\\\n"
+        "\\hline\n"
+        "\\end{tabular}"
+    )
 
 
 def test_document_directive_after_content_ignored():

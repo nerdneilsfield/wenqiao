@@ -6,12 +6,13 @@ against the EAST tree.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import click
 
-from wenqiao.diagnostic import DiagCollector
+from wenqiao.diagnostic import DiagCollector, Position
 from wenqiao.nodes import (
     Citation,
     CrossRef,
@@ -21,6 +22,8 @@ from wenqiao.nodes import (
     Table,
 )
 from wenqiao.pipeline import build_config, parse_and_process, resolve_bib
+
+_PLACEMENT_RE = re.compile(r"^[!htbpH]+$")
 
 
 @dataclass
@@ -94,6 +97,18 @@ def _walk(node: Node, info: ValidationInfo) -> None:
         _walk(child, info)
 
 
+def _position_from_node(node: Node) -> Position | None:
+    """Extract diagnostic position from node metadata (提取节点诊断位置)."""
+    if node.position and isinstance(node.position, dict):
+        start = node.position.get("start", {})
+        if isinstance(start, dict):
+            return Position(
+                line=int(start.get("line", 0)),
+                column=int(start.get("column", 1)),
+            )
+    return None
+
+
 def validate_bib(
     info: ValidationInfo,
     bib_entries: dict[str, str],
@@ -147,6 +162,42 @@ def validate_images(
         resolved = base_dir / src
         if not resolved.exists():
             diag.warning(f"Image file not found: {src} (图片文件未找到)")
+
+
+def validate_placements(node: Node, diag: DiagCollector) -> None:
+    """Validate figure/table placement directives (验证图表 placement 指令)."""
+    _validate_placements_in(node, diag)
+
+
+def _validate_placements_in(node: Node, diag: DiagCollector) -> None:
+    """Walk nodes and warn on invalid placement values (遍历节点并警告非法 placement 值)."""
+    if isinstance(node, (Figure, Image, Table)):
+        placement = node.metadata.get("placement")
+        if placement is not None:
+            placement_str = str(placement).strip()
+            if not placement_str:
+                diag.warning(
+                    "Empty placement directive (空的 placement 指令)",
+                    _position_from_node(node),
+                )
+            elif _PLACEMENT_RE.fullmatch(placement_str) is None:
+                diag.warning(
+                    f"Invalid placement directive: {placement_str!r} "
+                    "(无效的 placement 浮动参数)",
+                    _position_from_node(node),
+                )
+
+    if isinstance(node, Table):
+        for cell in node.headers:
+            for cell_node in cell:
+                _validate_placements_in(cell_node, diag)
+        for row in node.rows:
+            for cell in row:
+                for cell_node in cell:
+                    _validate_placements_in(cell_node, diag)
+
+    for child in node.children:
+        _validate_placements_in(child, diag)
 
 
 @click.command("validate")
@@ -242,6 +293,7 @@ def validate_cmd(
         validate_bib(info, bib_entries, diag)
     validate_crossrefs(info, diag)
     validate_images(info, input.parent, diag)
+    validate_placements(east, diag)
 
     # Output diagnostics (输出诊断信息)
     has_warnings = bool(diag.warnings)

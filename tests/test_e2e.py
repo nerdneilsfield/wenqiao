@@ -128,6 +128,28 @@ class TestFullExample:
         assert "\\begin{tabular}" in result
         assert "RANSAC" in result
 
+    def test_figure_custom_placement(self) -> None:
+        """图片 placement 指令端到端生效（Figure placement works end-to-end）."""
+        text = (
+            "![Pipeline](figures/pipeline.png)\n"
+            "<!-- caption: System pipeline -->\n"
+            "<!-- placement: h -->\n"
+        )
+        result = convert(text, mode="full")
+        assert "\\begin{figure}[h]" in result
+
+    def test_table_custom_placement(self) -> None:
+        """表格 placement 指令端到端生效（Table placement works end-to-end）."""
+        text = (
+            "| Method | RMSE |\n"
+            "|--------|------|\n"
+            "| ICP    | 2.3  |\n"
+            "<!-- caption: Result table -->\n"
+            "<!-- placement: h -->\n"
+        )
+        result = convert(text, mode="full")
+        assert "\\begin{table}[h]" in result
+
     def test_equation_with_label(self):
         text = (FIXTURES / "full_example.mid.md").read_text()
         result = convert(text, mode="full")

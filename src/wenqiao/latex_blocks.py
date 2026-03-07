@@ -165,13 +165,13 @@ class LaTeXBlockMixin:
         return self._render_figure_env(fig.src, node.metadata)
 
     def render_image(self, node: Node) -> str:
-        """Render Image node — promote to figure if caption/label present (渲染 Image 节点).
+        """Render Image node — promote to figure if float metadata is present (渲染 Image 节点).
 
-        有 caption/label 时升级为 figure 环境。
+        有 caption/label/placement 时升级为 figure 环境。
         """
         img = cast(Image, node)
         meta = node.metadata
-        if meta.get("caption") or meta.get("label"):
+        if meta.get("caption") or meta.get("label") or meta.get("placement"):
             return self._render_figure_env(img.src, meta)
         return f"\\includegraphics{{{img.src}}}"
 

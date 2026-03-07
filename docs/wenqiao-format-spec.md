@@ -196,6 +196,7 @@ Standard Markdown image syntax, with metadata comments attached below:
 <!-- caption: Pipeline overview of the proposed method -->
 <!-- label: fig:pipeline -->
 <!-- width: 0.85\textwidth -->
+<!-- placement: h -->
 ```
 
 ### Attach-up directives for figures / 图片附着指令
@@ -208,6 +209,10 @@ Standard Markdown image syntax, with metadata comments attached below:
 | `height` | `string` | Height specification (高度), e.g. `60mm` (can combine with width) |
 | `placement` | `string` | Float placement (浮动位置), e.g. `htbp` |
 | `centering` | `bool` | Center the figure (居中), default behavior |
+
+`placement` only affects LaTeX output and defaults to `htbp` when omitted.
+
+`placement` 仅影响 LaTeX 输出；未指定时默认使用 `htbp`。
 
 ### AI-generated figures / AI 生成图片
 
@@ -250,7 +255,20 @@ Standard GFM (GitHub Flavored Markdown) pipe tables:
 | Ours   | 1.9       | 8         | FPGA     |
 <!-- caption: Performance comparison on ModelNet40 dataset -->
 <!-- label: tab:results -->
+<!-- placement: h -->
 ```
+
+### Attach-up directives for tables / 表格附着指令
+
+| Directive | Type | Description (描述) |
+|-----------|------|-------|
+| `caption` | `string` | Table caption (表格标题) |
+| `label` | `string` | Cross-reference label, e.g. `tab:xxx` (交叉引用标签) |
+| `placement` | `string` | Float placement (浮动位置), e.g. `htbp`, `h`, `!htbp` |
+
+`placement` only affects LaTeX output and defaults to `htbp` when omitted.
+
+`placement` 仅影响 LaTeX 输出；未指定时默认使用 `htbp`。
 
 Table alignment via GFM syntax:
 

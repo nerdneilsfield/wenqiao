@@ -10,9 +10,11 @@ from __future__ import annotations
 from wenqiao.diagnostic import DiagCollector
 from wenqiao.nodes import (
     Environment,
+    HardBreak,
     Node,
     Paragraph,
     RawBlock,
+    SoftBreak,
 )
 
 
@@ -177,13 +179,40 @@ def _extract_raw_content(nodes: list[Node]) -> str:
 
 
 def _text_from_paragraph(para: Paragraph) -> str:
-    """Extract text content from paragraph (从段落中提取文本内容)."""
+    """Extract text content from paragraph, preserving line breaks for raw blocks.
+
+    从段落中提取文本内容，为 raw 块保留换行。
+    HardBreak → \\\\\n；SoftBreak 通常 → \n，但如果前一个文本片段以奇数个反斜杠结尾，
+    说明 Markdown 转义吞掉了一个 LaTeX 行分隔符反斜杠，需要补回 \\ + \n。
+    """
     parts: list[str] = []
-    for child in para.children:
-        if hasattr(child, "content"):
-            parts.append(child.content)
-        elif hasattr(child, "children"):
-            for sub in child.children:
-                if hasattr(sub, "content"):
-                    parts.append(sub.content)
+
+    def _append_softbreak() -> None:
+        """Append preserved soft break, restoring escaped LaTeX row separators.
+
+        追加 SoftBreak，并在需要时恢复被 Markdown 转义吞掉的 LaTeX 行分隔符。
+        """
+        prev = parts[-1] if parts else ""
+        trailing_backslashes = len(prev) - len(prev.rstrip("\\"))
+        if trailing_backslashes % 2 == 1:
+            # Restore the missing slash in a LaTeX row separator.
+            # (恢复 LaTeX 行分隔符中被吞掉的那个反斜杠。)
+            parts.append("\\\n")
+        else:
+            parts.append("\n")
+
+    def _append_children(children: list[Node]) -> None:
+        """Flatten paragraph descendants into raw text (将段落后代压平为原始文本)."""
+        for child in children:
+            if isinstance(child, HardBreak):
+                # LaTeX row separator \\ followed by newline (LaTeX 行分隔符 \\\\ 加换行)
+                parts.append("\\\\\n")
+            elif isinstance(child, SoftBreak):
+                _append_softbreak()
+            elif hasattr(child, "content"):
+                parts.append(child.content)
+            elif hasattr(child, "children"):
+                _append_children(child.children)
+
+    _append_children(para.children)
     return "".join(parts)

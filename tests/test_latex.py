@@ -368,6 +368,14 @@ class TestFigure:
         result = render(f)
         assert "\\begin{figure}[t]" in result
 
+    def test_image_with_placement_promoted_to_figure(self) -> None:
+        """带 placement 的图片升级为 figure（Image with placement is promoted）."""
+        img = Image(src="figs/a.png", alt="")
+        img.metadata["placement"] = "h"
+        result = render(img)
+        assert "\\begin{figure}[h]" in result
+        assert "\\includegraphics{figs/a.png}" in result
+
 
 class TestTable:
     def test_basic_table(self):
@@ -411,6 +419,17 @@ class TestTable:
         t.metadata["caption"] = "T"
         result = render(t)
         assert "\\texttt{x=1}" in result
+
+    def test_table_custom_placement(self) -> None:
+        """表格自定义浮动位置生效（Custom table placement is rendered）."""
+        t = Table(
+            headers=_cells("Method"),
+            alignments=["left"],
+            rows=_rows(["ICP"]),
+        )
+        t.metadata["placement"] = "h"
+        result = render(t)
+        assert "\\begin{table}[h]" in result
 
 
 # ── Task 3: Diagnostic warnings in renderer ───────────────────────────────────
