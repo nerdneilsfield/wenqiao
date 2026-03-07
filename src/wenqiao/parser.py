@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 
 from markdown_it import MarkdownIt
@@ -66,6 +67,10 @@ VALID_CITE_CMDS = frozenset(
         "autocite",
     }
 )
+
+# Bare shortcut syntax inside text nodes, e.g. [cite:key] / [ref:label].
+# (文本节点中的裸速记语法，例如 [cite:key] / [ref:label]。)
+_BARE_SHORTCUT_RE = re.compile(r"\[(cite|ref):([^\]]*)\]")
 
 
 def parse(text: str, *, diag: DiagCollector | None = None) -> Document:
@@ -240,8 +245,13 @@ def _build_hr(node: SyntaxTreeNode) -> ThematicBreak:
 # -- 行内构建器 --------------------------------------------------------------
 
 
-def _build_text(node: SyntaxTreeNode) -> Text:
-    return Text(content=node.content or "")
+def _build_text(node: SyntaxTreeNode) -> Node | list[Node]:
+    """Build text node, expanding bare cite/ref shortcuts when present.
+
+    构建文本节点；当文本中包含裸 cite/ref 速记时，将其展开为引用/交叉引用节点。
+    """
+    content = node.content or ""
+    return _expand_bare_shortcuts(content)
 
 
 def _build_code_inline(node: SyntaxTreeNode) -> CodeInline:
@@ -291,6 +301,52 @@ def _build_link(node: SyntaxTreeNode) -> Node:
 
     title: str = str(node.attrGet("title") or "")
     return Link(url=url, title=title, children=children)
+
+
+def _expand_bare_shortcuts(content: str) -> Node | list[Node]:
+    """Expand bare [cite:...] and [ref:...] shortcuts inside plain text.
+
+    展开普通文本中的裸 [cite:...] 和 [ref:...] 速记。
+    """
+    if not content:
+        return Text(content="")
+
+    parts: list[Node] = []
+    pos = 0
+    for match in _BARE_SHORTCUT_RE.finditer(content):
+        if match.start() > pos:
+            parts.append(Text(content=content[pos : match.start()]))
+
+        kind = match.group(1)
+        raw_value = match.group(2)
+        if kind == "cite":
+            parts.append(_build_bare_citation(raw_value))
+        else:
+            parts.append(_build_bare_cross_ref(raw_value))
+        pos = match.end()
+
+    if not parts:
+        return Text(content=content)
+
+    if pos < len(content):
+        parts.append(Text(content=content[pos:]))
+    return parts
+
+
+def _build_bare_citation(raw_value: str) -> Citation:
+    """Build Citation from bare shortcut payload (从裸速记负载构建 Citation)."""
+    raw = raw_value
+    cmd = "cite"
+    if "?cmd=" in raw:
+        raw, cmd = raw.split("?cmd=", 1)
+    keys = [k.strip() for k in raw.split(",") if k.strip()]
+    return Citation(keys=keys, display_text="", cmd=cmd)
+
+
+def _build_bare_cross_ref(raw_value: str) -> CrossRef:
+    """Build CrossRef from bare shortcut payload (从裸速记负载构建 CrossRef)."""
+    label = raw_value.strip()
+    return CrossRef(label=label, display_text=label)
 
 
 def _build_image(node: SyntaxTreeNode) -> Image:

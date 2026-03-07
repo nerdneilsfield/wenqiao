@@ -143,6 +143,48 @@ def test_ref():
     assert refs[0].display_text == "图1"
 
 
+def test_bare_cite_shortcut() -> None:
+    """裸 cite 速记生效（Bare cite shortcut is parsed）."""
+    doc = parse("[cite:wang2024]")
+    para = doc.children[0]
+    cites = [c for c in para.children if isinstance(c, Citation)]
+    assert len(cites) == 1
+    assert cites[0].keys == ["wang2024"]
+    assert cites[0].display_text == ""
+
+
+def test_bare_cite_shortcut_with_cmd() -> None:
+    """裸 cite 速记支持 cmd（Bare cite shortcut supports cmd）."""
+    doc = parse("[cite:wang2024?cmd=citet]")
+    para = doc.children[0]
+    cites = [c for c in para.children if isinstance(c, Citation)]
+    assert len(cites) == 1
+    assert cites[0].keys == ["wang2024"]
+    assert cites[0].cmd == "citet"
+
+
+def test_bare_ref_shortcut() -> None:
+    """裸 ref 速记生效（Bare ref shortcut is parsed）."""
+    doc = parse("[ref:fig:result]")
+    para = doc.children[0]
+    refs = [c for c in para.children if isinstance(c, CrossRef)]
+    assert len(refs) == 1
+    assert refs[0].label == "fig:result"
+    assert refs[0].display_text == "fig:result"
+
+
+def test_bare_shortcuts_inside_sentence() -> None:
+    """裸速记可出现在普通句子中（Bare shortcuts work inside normal text）."""
+    doc = parse("See [ref:fig:result] and [cite:wang2024].")
+    para = doc.children[0]
+    assert isinstance(para, Paragraph)
+    assert any(isinstance(c, CrossRef) for c in para.children)
+    assert any(isinstance(c, Citation) for c in para.children)
+    texts = [c.content for c in para.children if isinstance(c, Text)]
+    assert any("See " in t for t in texts)
+    assert any("." in t for t in texts)
+
+
 def test_regular_link_not_converted():
     doc = parse("[click](http://example.com)")
     para = doc.children[0]

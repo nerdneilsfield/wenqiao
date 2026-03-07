@@ -156,6 +156,17 @@ Citations use Markdown link syntax with `cite:` URL scheme:
 [Author et al.](cite:key)
 ```
 
+Bare shortcut syntax is also supported:
+
+```markdown
+[cite:wang2024]
+[cite:wang2024?cmd=citet]
+```
+
+The bare cite shortcut behaves like an empty-display citation.
+
+裸速记语法同样支持；其行为等价于空显示文本的引用。
+
 ### Citation variants / 引用变体
 
 | Syntax | LaTeX | Description |
@@ -183,7 +194,18 @@ See [Section 2](ref:sec:related) for details.
 Equation [1](ref:eq:transform) defines the transform.
 ```
 
+Bare shortcut syntax is also supported:
+
+```markdown
+[ref:fig:pipeline]
+[ref:eq:transform]
+```
+
 Generates `\ref{label}` in LaTeX. The display text is kept for Markdown/HTML output.
+
+For bare ref shortcuts, the label itself is used as display text in Markdown/HTML output.
+
+对于裸 ref 速记，Markdown/HTML 输出中的显示文本默认就是 label 本身。
 
 ---
 

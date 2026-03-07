@@ -258,6 +258,28 @@ def test_markdown_e2e_cross_ref() -> None:
     assert '<a href="#fig:a">Figure 1</a>' in content
 
 
+def test_markdown_e2e_bare_cite_and_ref_shortcuts() -> None:
+    """Bare cite/ref shortcuts work in Markdown output.
+
+    裸 cite/ref 速记在 Markdown 输出中有效。
+    """
+    text = "See [ref:fig:a] and [cite:wang2024].\n"
+    content = _convert_markdown(text)
+    assert '<a href="#fig:a">fig:a</a>' in content
+    assert "[^wang2024]:" in content
+
+
+def test_latex_e2e_bare_cite_and_ref_shortcuts() -> None:
+    """Bare cite/ref shortcuts work in LaTeX output.
+
+    裸 cite/ref 速记在 LaTeX 输出中有效。
+    """
+    text = "See [ref:fig:a] and [cite:wang2024].\n"
+    result = convert(text, mode="body")
+    assert r"fig:a~\ref{fig:a}" in result
+    assert r"\cite{wang2024}" in result
+
+
 def test_markdown_e2e_figure_rendering() -> None:
     """Figure with caption and label renders as HTML figure block.
 
