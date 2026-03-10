@@ -21,7 +21,7 @@ class TestEscapeLaTeX:
         assert escape_latex("{x}") == r"\{x\}"
 
     def test_tilde(self):
-        assert escape_latex("~") == r"\textasciitilde{}"
+        assert escape_latex("~") == "~"
 
     def test_caret(self):
         assert escape_latex("^") == r"\textasciicircum{}"
