@@ -25,7 +25,7 @@ def test_version() -> None:
     """版本输出正常（Version output works）."""
     result = CliRunner().invoke(main, ["--version"])
     assert result.exit_code == 0
-    assert "0.1.0" in result.output
+    assert "0.1.3" in result.output
 
 
 def test_convert_minimal(tmp_path) -> None:

@@ -17,7 +17,7 @@ from wenqiao.genfig import FigureRunner
 from wenqiao.genfig_openai import OpenAIFigureRunner
 from wenqiao.nodes import Document
 
-__version__ = "0.1.0"
+__version__ = "0.1.3"
 
 __all__ = [
     "__version__",
